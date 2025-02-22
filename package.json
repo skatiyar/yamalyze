@@ -13,9 +13,10 @@
     "url": "git+https://github.com/skatiyar/yamalyze.git"
   },
   "keywords": [
-    "YAML",
-    "Semantic",
-    "Diff"
+    "YAML Semantic Diff",
+    "YAML Analysis",
+    "YAML Diff",
+    "YAML Compare"
   ],
   "author": "skatiyar",
   "license": "MIT",
