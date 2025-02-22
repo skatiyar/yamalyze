@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack",
+    "build": "webpack build --mode=production",
     "serve": "webpack serve"
   },
   "repository": {
@@ -13,9 +13,10 @@
     "url": "git+https://github.com/skatiyar/yamalyze.git"
   },
   "keywords": [
-    "YAML",
-    "Semantic",
-    "Diff"
+    "YAML Semantic Diff",
+    "YAML Analysis",
+    "YAML Diff",
+    "YAML Compare"
   ],
   "author": "skatiyar",
   "license": "MIT",

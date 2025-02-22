@@ -4,19 +4,24 @@ const webpack = require('webpack');
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 
 module.exports = {
-    entry: './index.js',
-    output: {
-        path: path.resolve(__dirname, 'dist'),
-        filename: 'index.js',
-    },
-    plugins: [
-        new HtmlWebpackPlugin(),
-        new WasmPackPlugin({
-            crateDirectory: path.resolve(__dirname, ".")
-        }),
-    ],
-    mode: 'development',
-    experiments: {
-        asyncWebAssembly: true
-   }
+  entry: './index.js',
+  output: {
+    path: path.resolve(__dirname, '_site'),
+    filename: 'index.js',
+  },
+  plugins: [
+    new HtmlWebpackPlugin({
+      filename: 'index.html',
+      template: './static/index.html',
+      chunks: ['main'],
+      favicon: './static/favicon.ico',
+    }),
+    new WasmPackPlugin({
+      crateDirectory: path.resolve(__dirname, ".")
+    }),
+  ],
+  mode: process.env.NODE_ENV || 'development',
+  experiments: {
+    asyncWebAssembly: true
+  }
 };

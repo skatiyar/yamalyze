@@ -23,3 +23,5 @@ Cargo.lock
 # NodeJS
 node_modules/
 dist/
+_site/
+.DS_Store
