@@ -1,2 +1,2 @@
-# yamalyze-
+# Yamalyze
 Semantic YAML Analysis
