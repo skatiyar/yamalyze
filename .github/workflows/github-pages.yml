@@ -1,5 +1,10 @@
 name: Deploy to Github Pages
 run-name: ${{ github.actor }} is deploying Github pages 🚀
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 on:
   push:
     branches: [ "main" ]
