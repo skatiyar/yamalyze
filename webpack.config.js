@@ -4,7 +4,7 @@ const webpack = require('webpack');
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 
 module.exports = {
-  entry: './index.js',
+  entry: './pages/index.js',
   output: {
     path: path.resolve(__dirname, '_site'),
     filename: 'index.js',
@@ -23,5 +23,19 @@ module.exports = {
   mode: process.env.NODE_ENV || 'development',
   experiments: {
     asyncWebAssembly: true
-  }
+  },
+  module: {
+    rules: [
+      {
+        test: /\.css$/i,
+        include: path.resolve(__dirname, 'pages'),
+        use: ['style-loader', 'css-loader', 'postcss-loader'],
+      },
+      {
+        test: /\.(png|jpe?g|gif)$/i,
+        include: path.resolve(__dirname, '.'),
+        use: ['file-loader'],
+      },
+    ],
+  },
 };

@@ -18,8 +18,28 @@
     <title>Yamalyze</title>
 </head>
 
-<body>
-    <div id="container"> Show an example </div>
+<body class="bg-stone-50 dark:bg-stone-950 text-stone-950 dark:text-stone-50">
+    <main class="container mx-auto mt-10">
+        <div class="flex">
+            <div class="items-left mr-2 mt-2">
+                <img src="<%=require('./yamlyze.png').default%>" alt="Yamalyze" class="w-13 h-auto rounded-sm">
+            </div>
+            <div class="items-left mt-0.45">
+                <h1 class="text-4xl font-bold">Yamalyze</h1>
+                <p class="text-lg mt-1">Semantic YAML Analysis</p>
+            </div>
+        </div>
+        <div class="mt-10">
+            <div class="float-left w-1/2 pr-3">
+                <div id="line-numbers" class="container__lines"></div>
+                <textarea id="textarea" class="container__textarea"></textarea>
+            </div>
+            <div class="float-right w-1/2 pl-3">
+                <div id="line-numbers" class="container__lines"></div>
+                <textarea id="textarea" class="container__textarea"></textarea>
+            </div>
+        </div>
+    </main>
 </body>
 
 </html>
