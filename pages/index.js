@@ -1,3 +1,4 @@
+// CSS Assets
 import './style.css';
 
 import { greet } from '../pkg';
@@ -11,5 +12,5 @@ function ready(fn) {
 };
 
 ready(() => {
-  greet('World');
+  // greet('World');
 });

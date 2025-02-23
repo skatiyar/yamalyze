@@ -28,6 +28,7 @@
     "@tailwindcss/postcss": "^4.0.8",
     "@wasm-tool/wasm-pack-plugin": "^1.7.0",
     "css-loader": "^7.1.2",
+    "file-loader": "^6.2.0",
     "html-webpack-plugin": "^5.6.3",
     "postcss": "^8.5.3",
     "postcss-loader": "^8.1.1",

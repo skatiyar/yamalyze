@@ -31,6 +31,11 @@ module.exports = {
         include: path.resolve(__dirname, 'pages'),
         use: ['style-loader', 'css-loader', 'postcss-loader'],
       },
+      {
+        test: /\.(png|jpe?g|gif)$/i,
+        include: path.resolve(__dirname, '.'),
+        use: ['file-loader'],
+      },
     ],
   },
 };

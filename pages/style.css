@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+.container__lines {
+}
+
+.container__textarea {
+    @apply min-h-200 w-full bg-stone-100 dark:bg-stone-900 outline-0;
+}
