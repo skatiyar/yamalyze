@@ -29,15 +29,26 @@
                 <p class="text-lg mt-1">Semantic YAML Analysis</p>
             </div>
         </div>
-        <div class="mt-10">
-            <div class="float-left w-1/2 pr-3">
-                <div id="line-numbers" class="container__lines"></div>
-                <textarea id="textarea" class="container__textarea"></textarea>
+        <div id="app-container" class="mt-10">
+            <div class="w-full h-fit-content flex space-between">
+                <div class="w-1/2 pr-3">
+                    <!-- <input type="file" id="file-input" class="container__textarea--file" accept=".yaml, .yml"> -->
+                    <textarea id="text-area-one" class="container__textarea"></textarea>
+                    <p id="yaml-one-error" class="container__textarea--error hidden"></p>
+                </div>
+                <div class="w-1/2 pl-3">
+                    <!-- <input type="file" id="file-input" class="container__textarea--file" accept=".yaml, .yml"> -->
+                    <textarea id="text-area-two" class="container__textarea"></textarea>
+                    <p id="yaml-two-error" class="container__textarea--error hidden"></p>
+                </div>
             </div>
-            <div class="float-right w-1/2 pl-3">
-                <div id="line-numbers" class="container__lines"></div>
-                <textarea id="textarea" class="container__textarea"></textarea>
+            <div class="mt-5 mx-auto w-fit-content flex justify-around">
+                <button id="compare-button" class="w-100 bg-green-800 dark:bg-green-900 hover:bg-green-700 dark:hover:bg-green-950 text-white font-bold py-2 px-4 rounded cursor-pointer">Compare</button>
             </div>
+        </div>
+        <div id="app-error" class="mt-20 hidden text-red-700">
+            <p class="text-lg text-center">Error occurred while loading the application, as this browser doesn't support WebAssembly.</p>
+            <p class="text-lg text-center">Please update to one that supports WebAssembly or use <a href="https://www.yamldiff.com/" class="underline">YAML Diff</a>.</p>
         </div>
     </main>
 </body>
