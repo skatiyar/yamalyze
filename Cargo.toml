@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 [dependencies]
 serde_yml = "0.0.12"
 wasm-bindgen = "0.2.100"
+serde-wasm-bindgen = "0.4"

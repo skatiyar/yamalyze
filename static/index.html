@@ -43,12 +43,28 @@
                 </div>
             </div>
             <div class="mt-5 mx-auto w-fit-content flex justify-around">
-                <button id="compare-button" class="w-100 bg-green-800 dark:bg-green-900 hover:bg-green-700 dark:hover:bg-green-950 text-white font-bold py-2 px-4 rounded cursor-pointer">Compare</button>
+                <button id="compare-button"
+                    class="w-100 bg-green-800 dark:bg-green-900 hover:bg-green-700 dark:hover:bg-green-950 text-white font-bold py-2 px-4 rounded cursor-pointer">Compare</button>
+            </div>
+            <div id="diff-container" class="mt-5 hidden">
+                <div class="diff-bar flex justify-left items-center bg-gray-200 dark:bg-gray-800 p-2 rounded-t">
+                    <pre class="text-green-600 pr-4"><span id="diff-additions"></span> Additions</pre>
+                    <pre class="text-red-600 pr-4"><span id="diff-deletions"></span> Deletions</pre>
+                    <pre class="text-yellow-600"><span id="diff-conflicts"></span> Conflicts</pre>
+                </div>
+                <div class="diff-side diff-side-left">
+                    <pre id="diff-left" class="diff-content">xdsfsd</pre>
+                </div>
+                <div class="diff-side diff-side-right">
+                    <pre id="diff-right" class="diff-content">sdfsdfs</pre>
+                </div>
             </div>
         </div>
         <div id="app-error" class="mt-20 hidden text-red-700">
-            <p class="text-lg text-center">Error occurred while loading the application, as this browser doesn't support WebAssembly.</p>
-            <p class="text-lg text-center">Please update to one that supports WebAssembly or use <a href="https://www.yamldiff.com/" class="underline">YAML Diff</a>.</p>
+            <p class="text-lg text-center">Error occurred while loading the application, as this browser doesn't support
+                WebAssembly.</p>
+            <p class="text-lg text-center">Please update to one that supports WebAssembly or use <a
+                    href="https://www.yamldiff.com/" class="underline">YAML Diff</a>.</p>
         </div>
     </main>
 </body>

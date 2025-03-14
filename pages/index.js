@@ -49,10 +49,14 @@ ready(() => {
     yamlTwoError.classList.add('hidden');
   });
   const compareButton = document.getElementById('compare-button');
+  const diffContainer = document.getElementById('diff-container');
+  const diffAdditions = document.getElementById('diff-additions');
+  const diffDeletions = document.getElementById('diff-deletions');
+  const diffConflicts = document.getElementById('diff-conflicts');
   compareButton.addEventListener('click', () => {
-    console.log(textAreaOne.value, textAreaTwo.value);
     try {
       const diffData = diff(textAreaOne.value, textAreaTwo.value);
+      diffContainer.classList.remove('hidden');
       console.log(diffData);
     } catch (e) {
       console.error(e);
