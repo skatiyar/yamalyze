@@ -1,12 +1,11 @@
 mod diff;
 
 use diff::{yaml_diff, YamlDiff};
-use serde_yml;
 use wasm_bindgen::prelude::*;
 
 // Reads and parses a YAML file into a BTreeMap
 fn read_yaml(data: &str) -> Result<serde_yml::Value, serde_yml::Error> {
-    let parsed_data: serde_yml::Value = serde_yml::from_str(&data)?;
+    let parsed_data: serde_yml::Value = serde_yml::from_str(data)?;
     Ok(parsed_data)
 }
 
@@ -16,12 +15,10 @@ pub fn diff(yone: &str, ytwo: &str) -> Result<Vec<YamlDiff>, JsError> {
         Ok(one) => Ok(one),
         Err(e) => {
             let error_message = match e.location() {
-                Some(location) => format!(
-                    "[YAML ONE] Error: {} at line: {}",
-                    e.to_string(),
-                    location.line()
-                ),
-                None => format!("[YAML ONE] Error {}", e.to_string()),
+                Some(location) => {
+                    format!("[YAML ONE] Error: {e} at line: {}", location.line())
+                }
+                None => format!("[YAML ONE] Error {e}"),
             };
             return Err(JsError::new(&error_message));
         }
@@ -30,19 +27,17 @@ pub fn diff(yone: &str, ytwo: &str) -> Result<Vec<YamlDiff>, JsError> {
         Ok(two) => Ok(two),
         Err(e) => {
             let error_message = match e.location() {
-                Some(location) => format!(
-                    "[YAML TWO] Error: {} at line: {}",
-                    e.to_string(),
-                    location.line()
-                ),
-                None => format!("[YAML TWO] Error {}", e.to_string()),
+                Some(location) => {
+                    format!("[YAML TWO] Error: {e} at line: {}", location.line())
+                }
+                None => format!("[YAML TWO] Error {e}"),
             };
             return Err(JsError::new(&error_message));
         }
     };
-    return match (parsed_one, parsed_two) {
+    match (parsed_one, parsed_two) {
         (Ok(one), Ok(two)) => Ok(yaml_diff(one, two)),
         (Err(e), _) => Err(e),
         (_, Err(e)) => Err(e),
-    };
+    }
 }

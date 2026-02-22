@@ -1,2 +1,3 @@
 # Yamalyze
+
 Semantic YAML Analysis

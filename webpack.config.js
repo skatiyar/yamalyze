@@ -1,7 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const webpack = require('webpack');
-const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
+const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin');
 
 module.exports = {
   entry: './pages/index.js',
@@ -17,12 +16,12 @@ module.exports = {
       favicon: './static/favicon.ico',
     }),
     new WasmPackPlugin({
-      crateDirectory: path.resolve(__dirname, ".")
+      crateDirectory: path.resolve(__dirname, '.'),
     }),
   ],
   mode: process.env.NODE_ENV || 'development',
   experiments: {
-    asyncWebAssembly: true
+    asyncWebAssembly: true,
   },
   module: {
     rules: [

@@ -73,7 +73,7 @@ fn map_diff(left: serde_yml::Mapping, right: serde_yml::Mapping) -> Vec<YamlDiff
         match right.get(key) {
             Some(value_two) => {
                 let child_diffs = yaml_diff(value_one.clone(), value_two.clone());
-                let mut child = YamlDiff {
+                let child = YamlDiff {
                     key: Some(key.as_str().unwrap_or("").to_string()),
                     diff: DiffValue {
                         left_value: serde_wasm_bindgen::to_value(value_one).unwrap(),
@@ -109,7 +109,7 @@ fn map_diff(left: serde_yml::Mapping, right: serde_yml::Mapping) -> Vec<YamlDiff
                     right_value: serde_wasm_bindgen::to_value(value_two).unwrap(),
                 },
                 diff_type: DiffType::Additions,
-                    has_diff: true,
+                has_diff: true,
                 children: Vec::new(),
             };
             diffs.push(child);
@@ -129,7 +129,7 @@ fn seq_diff(left: serde_yml::Sequence, right: serde_yml::Sequence) -> Vec<YamlDi
                 Some(serde_yml::Value::Mapping(right_value)),
             ) => {
                 let child_diffs = map_diff(left_value.clone(), right_value.clone());
-                let mut child = YamlDiff {
+                let child = YamlDiff {
                     key: Some(i.to_string()),
                     diff: DiffValue {
                         left_value: serde_wasm_bindgen::to_value(left_value).unwrap(),
@@ -146,7 +146,7 @@ fn seq_diff(left: serde_yml::Sequence, right: serde_yml::Sequence) -> Vec<YamlDi
                 Some(serde_yml::Value::Sequence(right_value)),
             ) => {
                 let child_diffs = seq_diff(left_value.clone(), right_value.clone());
-                let mut child = YamlDiff {
+                let child = YamlDiff {
                     key: Some(i.to_string()),
                     diff: DiffValue {
                         left_value: serde_wasm_bindgen::to_value(left_value).unwrap(),
