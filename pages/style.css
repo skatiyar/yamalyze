@@ -1,13 +1,125 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-.container__textarea {
-    @apply min-h-200 w-full bg-stone-100 dark:bg-stone-900 outline-0 box-border p-2;
+/* ── Editor: error overlay ────────────────────────── */
+.editor-error {
+  @apply absolute bottom-0 left-0 right-0 z-10 bg-red-700/90 text-white text-sm px-3 py-1.5 font-mono;
 }
 
-.container__textarea--error {
-    @apply border-none relative -top-7 h-7 bg-red-700 pl-1 text-stone-100;
+/* ── Editor: file upload button ──────────────────── */
+.file-upload-btn {
+  @apply text-sm px-3 py-1 rounded cursor-pointer bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 transition-colors;
 }
 
-.container__textarea--file {
-    @apply border-none relative -top-7 h-7 dark:bg-stone-100 bg-stone-900 pl-1 text-blue-700;
+/* ── Editor: wrapper (gutter + textarea) ─────────── */
+.editor-wrapper {
+  @apply flex relative rounded border border-stone-300 dark:border-stone-700 overflow-hidden;
+  height: 500px;
+}
+
+/* ── Editor: line number gutter ──────────────────── */
+.editor-gutter {
+  @apply bg-stone-200 dark:bg-stone-800 text-stone-500 dark:text-stone-400 text-right select-none overflow-hidden font-mono text-sm leading-6 py-2 px-2;
+  min-width: 3rem;
+}
+
+.editor-gutter .gutter-line {
+  @apply block leading-6;
+}
+
+.editor-gutter .gutter-line--error {
+  @apply bg-red-600 text-white rounded-sm;
+}
+
+/* ── Editor: textarea ────────────────────────────── */
+.editor-textarea {
+  @apply flex-1 bg-stone-100 dark:bg-stone-900 outline-0 box-border p-2 resize-none font-mono text-sm leading-6 overflow-auto;
+}
+
+/* ── Diff tree ───────────────────────────────────── */
+.diff-tree {
+  @apply bg-stone-100 dark:bg-stone-900 border border-t-0 border-stone-300 dark:border-stone-700 rounded-b p-4 font-mono text-sm;
+}
+
+.diff-node {
+  @apply pl-4 border-l border-stone-300 dark:border-stone-700;
+}
+
+.diff-node-root {
+  @apply pl-0 border-l-0;
+}
+
+.diff-row {
+  @apply flex items-baseline gap-2 py-0.5 px-2 rounded;
+}
+
+/* Align leaf rows with collapsible summary keys (account for ▶ arrow + mr-2) */
+.diff-node > .diff-row {
+  padding-left: 1.75rem;
+}
+
+.diff-row--addition {
+  @apply bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300;
+}
+
+.diff-row--deletion {
+  @apply bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300;
+}
+
+.diff-row--modified {
+  @apply bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300;
+}
+
+.diff-row--unchanged {
+  @apply text-stone-500 dark:text-stone-400;
+}
+
+.diff-key {
+  @apply font-semibold;
+}
+
+.diff-value {
+  @apply font-normal;
+}
+
+.diff-value--left {
+  @apply text-red-600 dark:text-red-400 line-through;
+}
+
+.diff-value--right {
+  @apply text-green-600 dark:text-green-400;
+}
+
+.diff-arrow {
+  @apply text-stone-400 mx-1;
+}
+
+/* ── Diff filter buttons ─────────────────────────── */
+.diff-filter {
+  @apply cursor-pointer rounded-full px-3 py-0.5 transition-colors;
+}
+
+.diff-filter:hover {
+  @apply bg-stone-300 dark:bg-stone-700;
+}
+
+.diff-filter--active {
+  @apply ring-2 ring-current;
+}
+
+/* ── Collapsible details/summary ─────────────────── */
+.diff-tree details > summary {
+  @apply cursor-pointer list-none py-0.5 px-2 rounded hover:bg-stone-200 dark:hover:bg-stone-800;
+}
+
+.diff-tree details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.diff-tree details > summary::before {
+  content: '\25B6';
+  @apply inline-block mr-2 text-xs text-stone-400 transition-transform;
+}
+
+.diff-tree details[open] > summary::before {
+  transform: rotate(90deg);
 }

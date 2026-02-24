@@ -10,5 +10,14 @@ crate-type = ["cdylib"]
 
 [dependencies]
 serde_yml = "0.0.12"
-wasm-bindgen = "0.2.100"
-serde-wasm-bindgen = "0.4"
+wasm-bindgen = "0.2.111"
+serde-wasm-bindgen = "0.6.5"
+
+[lints.clippy]
+needless_return = "warn"
+needless_borrow = "warn"
+single_component_path_imports = "warn"
+to_string_in_format_args = "warn"
+
+[lints.rust]
+unused_mut = "warn"

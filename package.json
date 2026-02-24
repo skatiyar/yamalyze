@@ -6,7 +6,14 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack build --mode=production",
-    "serve": "webpack serve"
+    "serve": "webpack serve",
+    "lint": "eslint . && prettier --check . && cargo fmt -- --check && cargo clippy --target wasm32-unknown-unknown -- -D warnings",
+    "lint:js": "eslint . && prettier --check .",
+    "lint:rs": "cargo fmt -- --check && cargo clippy --target wasm32-unknown-unknown -- -D warnings",
+    "lint:fix": "eslint --fix . && prettier --write . && cargo fmt",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
@@ -25,18 +32,34 @@
   },
   "homepage": "https://github.com/skatiyar/yamalyze#readme",
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.0.8",
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/postcss": "^4.2.0",
     "@wasm-tool/wasm-pack-plugin": "^1.7.0",
-    "css-loader": "^7.1.2",
+    "css-loader": "^7.1.4",
+    "eslint": "^10.0.1",
+    "eslint-config-prettier": "^10.1.8",
     "file-loader": "^6.2.0",
-    "html-webpack-plugin": "^5.6.3",
-    "postcss": "^8.5.3",
-    "postcss-loader": "^8.1.1",
-    "postcss-preset-env": "^10.1.4",
+    "html-webpack-plugin": "^5.6.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "postcss": "^8.5.6",
+    "postcss-loader": "^8.2.1",
+    "postcss-preset-env": "^11.2.0",
+    "prettier": "^3.8.1",
     "style-loader": "^4.0.0",
-    "tailwindcss": "^4.0.8",
-    "webpack": "^5.98.0",
+    "tailwindcss": "^4.2.0",
+    "webpack": "^5.105.2",
     "webpack-cli": "^6.0.1",
-    "webpack-dev-server": "^5.2.0"
+    "webpack-dev-server": "^5.2.3"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "*.rs": "cargo fmt --"
   }
 }

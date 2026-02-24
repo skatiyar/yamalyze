@@ -1,11 +1,12 @@
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DiffType {
+    Unchanged,
     Additions,
     Deletions,
-    Conflicts,
+    Modified,
 }
 
 #[wasm_bindgen]
@@ -66,170 +67,236 @@ impl YamlDiff {
     }
 }
 
-fn map_diff(left: serde_yml::Mapping, right: serde_yml::Mapping) -> Vec<YamlDiff> {
+fn to_js(value: &serde_yml::Value) -> Result<JsValue, JsValue> {
+    serde_wasm_bindgen::to_value(value)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {e}")))
+}
+
+fn yaml_key_to_string(key: &serde_yml::Value) -> String {
+    match key {
+        serde_yml::Value::String(s) => s.clone(),
+        serde_yml::Value::Number(n) => n.to_string(),
+        serde_yml::Value::Bool(b) => b.to_string(),
+        serde_yml::Value::Null => "null".to_string(),
+        other => format!("{:?}", other),
+    }
+}
+
+/// Compute LCS (Longest Common Subsequence) indices between two sequences.
+/// Returns pairs of (left_index, right_index) for matching elements.
+fn lcs_indices(left: &serde_yml::Sequence, right: &serde_yml::Sequence) -> Vec<(usize, usize)> {
+    let n = left.len();
+    let m = right.len();
+    let mut dp = vec![vec![0usize; m + 1]; n + 1];
+
+    for i in 1..=n {
+        for j in 1..=m {
+            if left[i - 1] == right[j - 1] {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+                dp[i][j] = std::cmp::max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+    }
+
+    let mut result = Vec::new();
+    let (mut i, mut j) = (n, m);
+    while i > 0 && j > 0 {
+        if left[i - 1] == right[j - 1] {
+            result.push((i - 1, j - 1));
+            i -= 1;
+            j -= 1;
+        } else if dp[i - 1][j] > dp[i][j - 1] {
+            i -= 1;
+        } else {
+            j -= 1;
+        }
+    }
+    result.reverse();
+    result
+}
+
+fn map_diff(
+    left: &serde_yml::Mapping,
+    right: &serde_yml::Mapping,
+) -> Result<Vec<YamlDiff>, JsValue> {
     let mut diffs: Vec<YamlDiff> = Vec::new();
 
     for (key, value_one) in left.iter() {
+        let key_str = yaml_key_to_string(key);
         match right.get(key) {
             Some(value_two) => {
-                let child_diffs = yaml_diff(value_one.clone(), value_two.clone());
-                let mut child = YamlDiff {
-                    key: Some(key.as_str().unwrap_or("").to_string()),
+                let child_diffs = yaml_diff(value_one, value_two)?;
+                let any_child_has_diff = child_diffs.iter().any(|c| c.has_diff);
+                diffs.push(YamlDiff {
+                    key: Some(key_str),
                     diff: DiffValue {
-                        left_value: serde_wasm_bindgen::to_value(value_one).unwrap(),
-                        right_value: serde_wasm_bindgen::to_value(value_two).unwrap(),
+                        left_value: to_js(value_one)?,
+                        right_value: to_js(value_two)?,
                     },
-                    diff_type: DiffType::Additions,
-                    has_diff: true,
+                    diff_type: if any_child_has_diff {
+                        DiffType::Modified
+                    } else {
+                        DiffType::Unchanged
+                    },
+                    has_diff: any_child_has_diff,
                     children: child_diffs,
-                };
-                diffs.push(child);
+                });
             }
             None => {
-                let child = YamlDiff {
-                    key: Some(key.as_str().unwrap_or("").to_string()),
+                diffs.push(YamlDiff {
+                    key: Some(key_str),
                     diff: DiffValue {
-                        left_value: serde_wasm_bindgen::to_value(value_one).unwrap(),
+                        left_value: to_js(value_one)?,
                         right_value: JsValue::NULL,
                     },
-                    diff_type: DiffType::Additions,
+                    diff_type: DiffType::Deletions,
                     has_diff: true,
                     children: Vec::new(),
-                };
-                diffs.push(child);
+                });
             }
         }
     }
+
     for (key, value_two) in right.iter() {
         if !left.contains_key(key) {
-            let child = YamlDiff {
-                key: Some(key.as_str().unwrap_or("").to_string()),
+            diffs.push(YamlDiff {
+                key: Some(yaml_key_to_string(key)),
                 diff: DiffValue {
                     left_value: JsValue::NULL,
-                    right_value: serde_wasm_bindgen::to_value(value_two).unwrap(),
+                    right_value: to_js(value_two)?,
                 },
                 diff_type: DiffType::Additions,
-                    has_diff: true,
+                has_diff: true,
                 children: Vec::new(),
-            };
-            diffs.push(child);
+            });
         }
     }
-    diffs
+
+    Ok(diffs)
 }
 
-fn seq_diff(left: serde_yml::Sequence, right: serde_yml::Sequence) -> Vec<YamlDiff> {
+fn seq_diff(
+    left: &serde_yml::Sequence,
+    right: &serde_yml::Sequence,
+) -> Result<Vec<YamlDiff>, JsValue> {
     let mut diffs: Vec<YamlDiff> = Vec::new();
+    let lcs = lcs_indices(left, right);
 
-    let max_len = std::cmp::max(left.len(), right.len());
-    for i in 0..max_len {
-        match (left.get(i), right.get(i)) {
-            (
-                Some(serde_yml::Value::Mapping(left_value)),
-                Some(serde_yml::Value::Mapping(right_value)),
-            ) => {
-                let child_diffs = map_diff(left_value.clone(), right_value.clone());
-                let mut child = YamlDiff {
-                    key: Some(i.to_string()),
+    let mut li = 0;
+    let mut ri = 0;
+    let mut lcs_idx = 0;
+    let mut pos = 0;
+
+    while li < left.len() || ri < right.len() {
+        let at_lcs = lcs_idx < lcs.len() && lcs[lcs_idx] == (li, ri);
+
+        if at_lcs {
+            // Matched pair — recurse for internal diffs
+            let child_diffs = yaml_diff(&left[li], &right[ri])?;
+            let any_child_has_diff = child_diffs.iter().any(|c| c.has_diff);
+            diffs.push(YamlDiff {
+                key: Some(pos.to_string()),
+                diff: DiffValue {
+                    left_value: to_js(&left[li])?,
+                    right_value: to_js(&right[ri])?,
+                },
+                diff_type: if any_child_has_diff {
+                    DiffType::Modified
+                } else {
+                    DiffType::Unchanged
+                },
+                has_diff: any_child_has_diff,
+                children: child_diffs,
+            });
+            li += 1;
+            ri += 1;
+            lcs_idx += 1;
+        } else {
+            // Emit deletions from left until we reach the next LCS left index
+            let next_lcs_li = if lcs_idx < lcs.len() {
+                lcs[lcs_idx].0
+            } else {
+                left.len()
+            };
+            while li < next_lcs_li {
+                diffs.push(YamlDiff {
+                    key: Some(pos.to_string()),
                     diff: DiffValue {
-                        left_value: serde_wasm_bindgen::to_value(left_value).unwrap(),
-                        right_value: serde_wasm_bindgen::to_value(right_value).unwrap(),
-                    },
-                    diff_type: DiffType::Additions,
-                    has_diff: true,
-                    children: child_diffs,
-                };
-                diffs.push(child);
-            }
-            (
-                Some(serde_yml::Value::Sequence(left_value)),
-                Some(serde_yml::Value::Sequence(right_value)),
-            ) => {
-                let child_diffs = seq_diff(left_value.clone(), right_value.clone());
-                let mut child = YamlDiff {
-                    key: Some(i.to_string()),
-                    diff: DiffValue {
-                        left_value: serde_wasm_bindgen::to_value(left_value).unwrap(),
-                        right_value: serde_wasm_bindgen::to_value(right_value).unwrap(),
-                    },
-                    diff_type: DiffType::Additions,
-                    has_diff: true,
-                    children: child_diffs,
-                };
-                diffs.push(child);
-            }
-            (Some(left_value), Some(right_value)) => {
-                let child = YamlDiff {
-                    key: Some(i.to_string()),
-                    diff: DiffValue {
-                        left_value: serde_wasm_bindgen::to_value(left_value).unwrap(),
-                        right_value: serde_wasm_bindgen::to_value(right_value).unwrap(),
-                    },
-                    diff_type: DiffType::Additions,
-                    has_diff: true,
-                    children: Vec::new(),
-                };
-                diffs.push(child);
-            }
-            (Some(left_value), None) => {
-                let child = YamlDiff {
-                    key: Some(i.to_string()),
-                    diff: DiffValue {
-                        left_value: serde_wasm_bindgen::to_value(left_value).unwrap(),
+                        left_value: to_js(&left[li])?,
                         right_value: JsValue::NULL,
                     },
-                    diff_type: DiffType::Additions,
+                    diff_type: DiffType::Deletions,
                     has_diff: true,
                     children: Vec::new(),
-                };
-                diffs.push(child);
+                });
+                li += 1;
+                pos += 1;
             }
-            (None, Some(right_value)) => {
-                let child = YamlDiff {
-                    key: Some(i.to_string()),
+
+            // Emit additions from right until we reach the next LCS right index
+            let next_lcs_ri = if lcs_idx < lcs.len() {
+                lcs[lcs_idx].1
+            } else {
+                right.len()
+            };
+            while ri < next_lcs_ri {
+                diffs.push(YamlDiff {
+                    key: Some(pos.to_string()),
                     diff: DiffValue {
                         left_value: JsValue::NULL,
-                        right_value: serde_wasm_bindgen::to_value(right_value).unwrap(),
+                        right_value: to_js(&right[ri])?,
                     },
                     diff_type: DiffType::Additions,
                     has_diff: true,
                     children: Vec::new(),
-                };
-                diffs.push(child);
+                });
+                ri += 1;
+                pos += 1;
             }
-            (None, None) => {}
+
+            continue;
         }
+        pos += 1;
     }
-    diffs
+
+    Ok(diffs)
 }
 
-fn val_diff(left: serde_yml::Value, right: serde_yml::Value) -> Vec<YamlDiff> {
-    let mut diffs: Vec<YamlDiff> = Vec::new();
-    let child = YamlDiff {
-        key: None,
-        diff: DiffValue {
-            left_value: serde_wasm_bindgen::to_value(&left).unwrap(),
-            right_value: serde_wasm_bindgen::to_value(&right).unwrap(),
-        },
-        has_diff: left != right,
-        diff_type: match (left, right) {
+fn val_diff(left: &serde_yml::Value, right: &serde_yml::Value) -> Result<Vec<YamlDiff>, JsValue> {
+    let has_diff = left != right;
+    let diff_type = if !has_diff {
+        DiffType::Unchanged
+    } else {
+        match (left, right) {
             (serde_yml::Value::Null, _) => DiffType::Additions,
             (_, serde_yml::Value::Null) => DiffType::Deletions,
-            _ => DiffType::Conflicts,
-        },
-        children: Vec::new(),
+            _ => DiffType::Modified,
+        }
     };
-    diffs.push(child);
-    diffs
+
+    Ok(vec![YamlDiff {
+        key: None,
+        diff: DiffValue {
+            left_value: to_js(left)?,
+            right_value: to_js(right)?,
+        },
+        has_diff,
+        diff_type,
+        children: Vec::new(),
+    }])
 }
 
-pub fn yaml_diff(left: serde_yml::Value, right: serde_yml::Value) -> Vec<YamlDiff> {
+pub fn yaml_diff(
+    left: &serde_yml::Value,
+    right: &serde_yml::Value,
+) -> Result<Vec<YamlDiff>, JsValue> {
     match (left, right) {
         (serde_yml::Value::Mapping(map_one), serde_yml::Value::Mapping(map_two)) => {
-            map_diff(map_one.clone(), map_two.clone())
+            map_diff(map_one, map_two)
         }
         (serde_yml::Value::Sequence(seq_one), serde_yml::Value::Sequence(seq_two)) => {
-            seq_diff(seq_one.clone(), seq_two.clone())
+            seq_diff(seq_one, seq_two)
         }
         (one, two) => val_diff(one, two),
     }

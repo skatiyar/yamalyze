@@ -1,72 +1,138 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="Semantic YAML Analysis">
-    <meta name="keywords" content="YAML Semantic Diff, YAML Analysis, YAML Diff, YAML Compare">
-    <meta name="robots" content="index, follow">
-    <meta name="googlebot" content="index, follow">
-    <meta name="bingbot" content="index, follow">
-    <meta name="revisit-after" content="7 days">
-    <meta name="language" content="English">
-    <meta name="distribution" content="global">
-    <meta name="author" content="skatiyar">
-    <meta name="theme-color" content="#000000">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta name="description" content="Semantic YAML Analysis" />
+    <meta name="keywords" content="YAML Semantic Diff, YAML Analysis, YAML Diff, YAML Compare" />
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="language" content="English" />
+    <meta name="distribution" content="global" />
+    <meta name="author" content="skatiyar" />
+    <meta name="theme-color" content="#000000" />
     <title>Yamalyze</title>
-</head>
+  </head>
 
-<body class="bg-stone-50 dark:bg-stone-950 text-stone-950 dark:text-stone-50">
-    <main class="container mx-auto mt-10">
-        <div class="flex">
-            <div class="items-left mr-2 mt-2">
-                <img src="<%=require('./yamlyze.png').default%>" alt="Yamalyze" class="w-13 h-auto rounded-sm">
-            </div>
-            <div class="items-left mt-0.45">
-                <h1 class="text-4xl font-bold">Yamalyze</h1>
-                <p class="text-lg mt-1">Semantic YAML Analysis</p>
-            </div>
+  <body class="bg-stone-50 dark:bg-stone-950 text-stone-950 dark:text-stone-50">
+    <main class="container mx-auto mt-10 px-4">
+      <div class="flex">
+        <div class="items-left mr-2 mt-2">
+          <img
+            src="<%=require('./yamlyze.png').default%>"
+            alt="Yamalyze"
+            class="w-13 h-auto rounded-sm"
+          />
         </div>
-        <div id="app-container" class="mt-10">
-            <div class="w-full h-fit-content flex space-between">
-                <div class="w-1/2 pr-3">
-                    <!-- <input type="file" id="file-input" class="container__textarea--file" accept=".yaml, .yml"> -->
-                    <textarea id="text-area-one" class="container__textarea"></textarea>
-                    <p id="yaml-one-error" class="container__textarea--error hidden"></p>
-                </div>
-                <div class="w-1/2 pl-3">
-                    <!-- <input type="file" id="file-input" class="container__textarea--file" accept=".yaml, .yml"> -->
-                    <textarea id="text-area-two" class="container__textarea"></textarea>
-                    <p id="yaml-two-error" class="container__textarea--error hidden"></p>
-                </div>
-            </div>
-            <div class="mt-5 mx-auto w-fit-content flex justify-around">
-                <button id="compare-button"
-                    class="w-100 bg-green-800 dark:bg-green-900 hover:bg-green-700 dark:hover:bg-green-950 text-white font-bold py-2 px-4 rounded cursor-pointer">Compare</button>
-            </div>
-            <div id="diff-container" class="mt-5 hidden">
-                <div class="diff-bar flex justify-left items-center bg-gray-200 dark:bg-gray-800 p-2 rounded-t">
-                    <pre class="text-green-600 pr-4"><span id="diff-additions"></span> Additions</pre>
-                    <pre class="text-red-600 pr-4"><span id="diff-deletions"></span> Deletions</pre>
-                    <pre class="text-yellow-600"><span id="diff-conflicts"></span> Conflicts</pre>
-                </div>
-                <div class="diff-side diff-side-left">
-                    <pre id="diff-left" class="diff-content">xdsfsd</pre>
-                </div>
-                <div class="diff-side diff-side-right">
-                    <pre id="diff-right" class="diff-content">sdfsdfs</pre>
-                </div>
-            </div>
+        <div class="items-left mt-0.45">
+          <h1 class="text-4xl font-bold">Yamalyze</h1>
+          <p class="text-lg mt-1">
+            Semantic YAML Analysis - Private & Secure. Runs locally on your browser.
+          </p>
         </div>
-        <div id="app-error" class="mt-20 hidden text-red-700">
-            <p class="text-lg text-center">Error occurred while loading the application, as this browser doesn't support
-                WebAssembly.</p>
-            <p class="text-lg text-center">Please update to one that supports WebAssembly or use <a
-                    href="https://www.yamldiff.com/" class="underline">YAML Diff</a>.</p>
+      </div>
+
+      <div id="app-container" class="mt-10">
+        <div class="w-full flex gap-6">
+          <!-- Left panel -->
+          <div class="w-1/2 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-sm font-medium text-stone-600 dark:text-stone-400">YAML One</label>
+              <label>
+                <input type="file" id="file-one" accept=".yaml,.yml,.txt" class="hidden" />
+                <span class="file-upload-btn">Upload File</span>
+              </label>
+            </div>
+            <div class="editor-wrapper">
+              <div id="gutter-one" class="editor-gutter" aria-hidden="true"></div>
+              <textarea
+                id="text-area-one"
+                class="editor-textarea"
+                spellcheck="false"
+                wrap="off"
+              ></textarea>
+              <div id="yaml-one-error" class="editor-error hidden"></div>
+            </div>
+          </div>
+
+          <!-- Right panel -->
+          <div class="w-1/2 flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-sm font-medium text-stone-600 dark:text-stone-400">YAML Two</label>
+              <label>
+                <input type="file" id="file-two" accept=".yaml,.yml,.txt" class="hidden" />
+                <span class="file-upload-btn">Upload File</span>
+              </label>
+            </div>
+            <div class="editor-wrapper">
+              <div id="gutter-two" class="editor-gutter" aria-hidden="true"></div>
+              <textarea
+                id="text-area-two"
+                class="editor-textarea"
+                spellcheck="false"
+                wrap="off"
+              ></textarea>
+              <div id="yaml-two-error" class="editor-error hidden"></div>
+            </div>
+          </div>
         </div>
+
+        <!-- Diff results -->
+        <div id="diff-container" class="mt-8 hidden">
+          <div
+            class="flex items-center gap-4 bg-stone-200 dark:bg-stone-800 p-3 rounded-t text-sm font-medium"
+          >
+            <button id="filter-additions" data-filter="1" class="diff-filter text-green-600">
+              <span id="diff-additions">0</span> Additions
+            </button>
+            <button id="filter-deletions" data-filter="2" class="diff-filter text-red-600">
+              <span id="diff-deletions">0</span> Deletions
+            </button>
+            <button id="filter-modified" data-filter="3" class="diff-filter text-amber-600">
+              <span id="diff-modified">0</span> Modified
+            </button>
+          </div>
+          <div id="diff-tree" class="diff-tree"></div>
+        </div>
+      </div>
+
+      <div id="app-error" class="mt-20 hidden text-red-700">
+        <p class="text-lg text-center">
+          Error occurred while loading the application, as this browser doesn't support WebAssembly.
+        </p>
+        <p class="text-lg text-center">
+          Please update to one that supports WebAssembly or use
+          <a href="https://www.yamldiff.com/" class="underline">YAML Diff</a>.
+        </p>
+      </div>
     </main>
-</body>
 
+    <footer
+      class="max-w-1/4 mx-auto px-4 py-6 mt-16 border-t border-stone-300 dark:border-stone-700 flex items-center justify-center gap-4 text-sm text-stone-500 dark:text-stone-400"
+    >
+      <a
+        href="https://skatiyar.info"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="hover:text-stone-700 dark:hover:text-stone-200"
+        >SKatiyar</a
+      >
+      |
+      <a
+        href="https://github.com/skatiyar/yamalyze"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="hover:text-stone-700 dark:hover:text-stone-200"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+          />
+        </svg>
+      </a>
+    </footer>
+  </body>
 </html>
