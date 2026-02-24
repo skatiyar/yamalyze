@@ -20,6 +20,7 @@ module.exports = [
         clearTimeout: 'readonly',
         Event: 'readonly',
         Promise: 'readonly',
+        TextEncoder: 'readonly',
       },
     },
   },

@@ -54,7 +54,11 @@
                 spellcheck="false"
                 wrap="off"
               ></textarea>
-              <div id="yaml-one-error" class="editor-error hidden"></div>
+              <div class="editor-overlays">
+                <div id="size-one-warning" class="editor-size-warning hidden"></div>
+                <div id="yaml-one-warning" class="editor-warning hidden"></div>
+                <div id="yaml-one-error" class="editor-error hidden"></div>
+              </div>
             </div>
           </div>
 
@@ -75,15 +79,20 @@
                 spellcheck="false"
                 wrap="off"
               ></textarea>
-              <div id="yaml-two-error" class="editor-error hidden"></div>
+              <div class="editor-overlays">
+                <div id="size-two-warning" class="editor-size-warning hidden"></div>
+                <div id="yaml-two-warning" class="editor-warning hidden"></div>
+                <div id="yaml-two-error" class="editor-error hidden"></div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Diff results -->
-        <div id="diff-container" class="mt-8 hidden">
+        <div id="diff-container" class="mt-8">
           <div
-            class="flex items-center gap-4 bg-stone-200 dark:bg-stone-800 p-3 rounded-t text-sm font-medium"
+            id="diff-summary"
+            class="flex items-center gap-4 bg-stone-200 dark:bg-stone-800 p-3 rounded-t text-sm font-medium hidden"
           >
             <button id="filter-additions" data-filter="1" class="diff-filter text-green-600">
               <span id="diff-additions">0</span> Additions
@@ -95,7 +104,13 @@
               <span id="diff-modified">0</span> Modified
             </button>
           </div>
-          <div id="diff-tree" class="diff-tree"></div>
+          <button id="diff-run-btn" class="diff-run-btn hidden">Run Diff</button>
+          <div id="diff-placeholder" class="diff-placeholder">Add files to analyze.</div>
+          <div id="diff-loader" class="diff-loader hidden">
+            <div class="diff-loader-spinner"></div>
+            <span id="diff-loader-text">Processing...</span>
+          </div>
+          <div id="diff-tree" class="diff-tree hidden"></div>
         </div>
       </div>
 
