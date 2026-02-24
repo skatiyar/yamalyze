@@ -52,7 +52,17 @@ const setupFileUpload = (fileInput, textarea, gutter, onContentChange) => {
     try {
       const text = await readFile(file);
       textarea.value = text;
-      localStorage.setItem(textarea.id, text);
+      try {
+        localStorage.setItem(textarea.id, text);
+      } catch (storageError) {
+        if (storageError.name === 'QuotaExceededError') {
+          console.warn(
+            'localStorage quota exceeded. Content will not be persisted across sessions.',
+          );
+        } else {
+          console.error('localStorage error:', storageError);
+        }
+      }
       updateGutter(textarea, gutter);
       onContentChange();
     } catch (e) {
@@ -410,13 +420,29 @@ ready(() => {
 
   // Input events
   textAreaOne.addEventListener('input', (event) => {
-    localStorage.setItem('text-area-one', event.target.value);
+    try {
+      localStorage.setItem('text-area-one', event.target.value);
+    } catch (storageError) {
+      if (storageError.name === 'QuotaExceededError') {
+        console.warn('localStorage quota exceeded. Content will not be persisted across sessions.');
+      } else {
+        console.error('localStorage error:', storageError);
+      }
+    }
     updateGutter(textAreaOne, gutterOne);
     debouncedDiff();
   });
 
   textAreaTwo.addEventListener('input', (event) => {
-    localStorage.setItem('text-area-two', event.target.value);
+    try {
+      localStorage.setItem('text-area-two', event.target.value);
+    } catch (storageError) {
+      if (storageError.name === 'QuotaExceededError') {
+        console.warn('localStorage quota exceeded. Content will not be persisted across sessions.');
+      } else {
+        console.error('localStorage error:', storageError);
+      }
+    }
     updateGutter(textAreaTwo, gutterTwo);
     debouncedDiff();
   });
