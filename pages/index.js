@@ -315,7 +315,10 @@ const renderDiffNode = (node, isRoot = false, filter = null) => {
   }
 
   div.appendChild(renderDiffValue(node));
-  return div;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'diff-node';
+  wrapper.appendChild(div);
+  return wrapper;
 };
 
 const renderDiffTree = (diffs, summaryEls, filter = null) => {
