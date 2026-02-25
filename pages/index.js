@@ -1,7 +1,7 @@
 // CSS Assets
 import './style.css';
 
-import { diff } from '../pkg';
+import { diff_init, diff_key, diff_stored, diff_cleanup } from '../pkg';
 
 // ── Utilities ────────────────────────────────────────
 
@@ -12,6 +12,8 @@ const debounce = (fn, delay) => {
     timer = setTimeout(() => fn(...args), delay);
   };
 };
+
+const yieldToUI = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const readFile = (file) => {
   return new Promise((resolve, reject) => {
@@ -26,6 +28,27 @@ const parseErrorLine = (message) => {
   const match = message.match(/at line:\s*(\d+)/);
   return match ? parseInt(match[1], 10) : null;
 };
+
+// ── File Size Tiers ─────────────────────────────────
+
+const SIZE_TIERS = {
+  SMALL: 'small', // < 1MB — full auto behavior
+  MEDIUM: 'medium', // 1-10MB — auto-diff, skip localStorage
+  LARGE: 'large', // 10-50MB — explicit diff only
+  HUGE: 'huge', // 50-100MB — explicit diff, read-only
+  REJECTED: 'rejected', // > 100MB — refuse
+};
+
+const getFileTier = (byteSize) => {
+  const MB = 1024 * 1024;
+  if (byteSize > 100 * MB) return SIZE_TIERS.REJECTED;
+  if (byteSize > 50 * MB) return SIZE_TIERS.HUGE;
+  if (byteSize > 10 * MB) return SIZE_TIERS.LARGE;
+  if (byteSize > 1 * MB) return SIZE_TIERS.MEDIUM;
+  return SIZE_TIERS.SMALL;
+};
+
+const getContentByteSize = (str) => new TextEncoder().encode(str).length;
 
 // ── Gutter ───────────────────────────────────────────
 
@@ -45,26 +68,39 @@ const syncScroll = (textarea, gutter) => {
 
 // ── File Upload ──────────────────────────────────────
 
-const setupFileUpload = (fileInput, textarea, gutter, onContentChange) => {
+const setupFileUpload = (fileInput, textarea, gutter, warningDiv, onContentChange) => {
   fileInput.addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+
+    const tier = getFileTier(file.size);
+    if (tier === SIZE_TIERS.REJECTED) {
+      showStorageWarning(warningDiv, 'File exceeds 100MB limit. Please use a smaller file.');
+      fileInput.value = '';
+      return;
+    }
+
     try {
       const text = await readFile(file);
       textarea.value = text;
-      try {
-        localStorage.setItem(textarea.id, text);
-      } catch (storageError) {
-        if (storageError.name === 'QuotaExceededError') {
-          console.warn(
-            'localStorage quota exceeded. Content will not be persisted across sessions.',
+      if (tier === SIZE_TIERS.SMALL) {
+        try {
+          localStorage.setItem(textarea.id, text);
+          clearStorageWarning(warningDiv);
+        } catch (storageError) {
+          showStorageWarning(
+            warningDiv,
+            storageError.name === 'QuotaExceededError'
+              ? 'Storage quota exceeded. Content will not be persisted across sessions.'
+              : `Storage error: ${storageError.message}`,
           );
-        } else {
-          console.error('localStorage error:', storageError);
         }
+      } else {
+        clearStorageWarning(warningDiv);
       }
+
       updateGutter(textarea, gutter);
-      onContentChange();
+      onContentChange(tier);
     } catch (e) {
       console.error('File read error:', e);
     }
@@ -89,6 +125,18 @@ const clearError = (errorDiv, gutter, textarea) => {
   errorDiv.classList.add('hidden');
   errorDiv.textContent = '';
   updateGutter(textarea, gutter);
+};
+
+// ── Storage Warning Display ─────────────────────────
+
+const showStorageWarning = (warningDiv, message) => {
+  warningDiv.textContent = message;
+  warningDiv.classList.remove('hidden');
+};
+
+const clearStorageWarning = (warningDiv) => {
+  warningDiv.classList.add('hidden');
+  warningDiv.textContent = '';
 };
 
 // ── Diff Tree Rendering ─────────────────────────────
@@ -267,24 +315,25 @@ const renderDiffNode = (node, isRoot = false, filter = null) => {
   }
 
   div.appendChild(renderDiffValue(node));
-  return div;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'diff-node';
+  wrapper.appendChild(div);
+  return wrapper;
 };
 
-const renderDiffTree = (diffs, container, summaryEls, filter = null) => {
+const renderDiffTree = (diffs, summaryEls, filter = null) => {
   const counts = countDiffs(diffs);
   summaryEls.additions.textContent = counts.additions;
   summaryEls.deletions.textContent = counts.deletions;
   summaryEls.modified.textContent = counts.modified;
 
-  const treeEl = container.querySelector('#diff-tree');
+  const treeEl = document.getElementById('diff-tree');
   treeEl.innerHTML = '';
 
   for (const node of diffs) {
     const el = renderDiffNode(node, true, filter);
     if (el) treeEl.appendChild(el);
   }
-
-  container.classList.remove('hidden');
 };
 
 // ── Initialization ───────────────────────────────────
@@ -327,9 +376,18 @@ ready(() => {
   const gutterTwo = document.getElementById('gutter-two');
   const errorOne = document.getElementById('yaml-one-error');
   const errorTwo = document.getElementById('yaml-two-error');
+  const warningOne = document.getElementById('yaml-one-warning');
+  const warningTwo = document.getElementById('yaml-two-warning');
   const fileOne = document.getElementById('file-one');
   const fileTwo = document.getElementById('file-two');
-  const diffContainer = document.getElementById('diff-container');
+  const diffPlaceholder = document.getElementById('diff-placeholder');
+  const diffSummary = document.getElementById('diff-summary');
+  const diffLoader = document.getElementById('diff-loader');
+  const diffLoaderText = document.getElementById('diff-loader-text');
+  const diffTree = document.getElementById('diff-tree');
+  const sizeWarningOne = document.getElementById('size-one-warning');
+  const sizeWarningTwo = document.getElementById('size-two-warning');
+  const diffRunBtn = document.getElementById('diff-run-btn');
   const summaryEls = {
     additions: document.getElementById('diff-additions'),
     deletions: document.getElementById('diff-deletions'),
@@ -343,6 +401,74 @@ ready(() => {
 
   let lastDiffData = null;
   let activeFilter = null;
+  let diffInProgress = false;
+  let diffPending = false;
+  let requireExplicitDiff = false;
+
+  // Placeholder helpers
+  const showPlaceholder = () => {
+    diffPlaceholder.classList.remove('hidden');
+    diffSummary.classList.add('hidden');
+    diffLoader.classList.add('hidden');
+    diffTree.classList.add('hidden');
+  };
+
+  const hidePlaceholder = () => {
+    diffPlaceholder.classList.add('hidden');
+    diffSummary.classList.remove('hidden');
+  };
+
+  // Loader helpers
+  const showLoader = (text) => {
+    diffLoaderText.textContent = text;
+    diffPlaceholder.classList.add('hidden');
+    diffLoader.classList.remove('hidden');
+    diffTree.classList.add('hidden');
+  };
+
+  const hideLoader = () => {
+    diffLoader.classList.add('hidden');
+    diffTree.classList.remove('hidden');
+  };
+
+  // Size tier helpers
+  const updatePanelTier = (tier, byteSize, textarea, warningDiv) => {
+    const MB = (byteSize / (1024 * 1024)).toFixed(1);
+    if (tier === SIZE_TIERS.LARGE || tier === SIZE_TIERS.HUGE) {
+      warningDiv.textContent = `${MB} MB — read-only mode, auto-diff disabled.`;
+      warningDiv.classList.remove('hidden');
+      textarea.readOnly = true;
+    } else if (tier === SIZE_TIERS.MEDIUM) {
+      warningDiv.textContent = `${MB} MB — localStorage disabled, content won't persist across sessions.`;
+      warningDiv.classList.remove('hidden');
+      textarea.readOnly = false;
+    } else {
+      warningDiv.classList.add('hidden');
+      warningDiv.textContent = '';
+      textarea.readOnly = false;
+    }
+  };
+
+  const updateSizeTier = () => {
+    const sizeOne = getContentByteSize(textAreaOne.value);
+    const sizeTwo = getContentByteSize(textAreaTwo.value);
+    const tierOne = getFileTier(sizeOne);
+    const tierTwo = getFileTier(sizeTwo);
+
+    updatePanelTier(tierOne, sizeOne, textAreaOne, sizeWarningOne);
+    updatePanelTier(tierTwo, sizeTwo, textAreaTwo, sizeWarningTwo);
+
+    const order = [SIZE_TIERS.SMALL, SIZE_TIERS.MEDIUM, SIZE_TIERS.LARGE, SIZE_TIERS.HUGE];
+    const maxTier = order.indexOf(tierOne) >= order.indexOf(tierTwo) ? tierOne : tierTwo;
+
+    if (maxTier === SIZE_TIERS.LARGE || maxTier === SIZE_TIERS.HUGE) {
+      diffRunBtn.classList.remove('hidden');
+      requireExplicitDiff = true;
+    } else {
+      diffRunBtn.classList.add('hidden');
+      requireExplicitDiff = false;
+    }
+  };
 
   // Restore from localStorage
   textAreaOne.value = localStorage.getItem('text-area-one') || '';
@@ -363,8 +489,15 @@ ready(() => {
     filterBtns.modified.classList.remove('diff-filter--active');
   };
 
-  // Core diff
-  const runDiff = () => {
+  // Core diff (async with chunked processing)
+  const runDiff = async () => {
+    if (diffInProgress) {
+      diffPending = true;
+      return;
+    }
+    diffInProgress = true;
+    diffPending = false;
+
     clearError(errorOne, gutterOne, textAreaOne);
     clearError(errorTwo, gutterTwo, textAreaTwo);
 
@@ -372,24 +505,58 @@ ready(() => {
     const v2 = textAreaTwo.value;
 
     if (!v1.trim() && !v2.trim()) {
-      diffContainer.classList.add('hidden');
+      showPlaceholder();
+      diffInProgress = false;
       return;
     }
 
+    hidePlaceholder();
+    showLoader('Parsing YAML...');
+    await yieldToUI();
+
     try {
-      const diffData = diff(v1, v2);
+      const keys = diff_init(v1, v2);
+
+      let diffData;
+      if (keys.length > 0) {
+        diffData = [];
+        for (let i = 0; i < keys.length; i++) {
+          showLoader(`Computing diff (${i + 1}/${keys.length})...`);
+          await yieldToUI();
+          diffData.push(diff_key(keys[i]));
+        }
+      } else {
+        showLoader('Computing diff...');
+        await yieldToUI();
+        diffData = diff_stored();
+      }
+
+      diff_cleanup();
+
+      showLoader('Rendering...');
+      await yieldToUI();
+
       lastDiffData = diffData;
       activeFilter = null;
       clearActiveFilterBtn();
-      renderDiffTree(diffData, diffContainer, summaryEls);
+      renderDiffTree(diffData, summaryEls);
+      hideLoader();
     } catch (e) {
-      diffContainer.classList.add('hidden');
+      diff_cleanup();
+      hideLoader();
+      showPlaceholder();
       if (e.message.includes('[YAML ONE]')) {
         showError(errorOne, gutterOne, textAreaOne, e.message, 'YAML ONE');
       }
       if (e.message.includes('[YAML TWO]')) {
         showError(errorTwo, gutterTwo, textAreaTwo, e.message, 'YAML TWO');
       }
+    }
+
+    diffInProgress = false;
+    if (diffPending) {
+      diffPending = false;
+      runDiff();
     }
   };
 
@@ -410,7 +577,7 @@ ready(() => {
     }
 
     if (lastDiffData) {
-      renderDiffTree(lastDiffData, diffContainer, summaryEls, activeFilter);
+      renderDiffTree(lastDiffData, summaryEls, activeFilter);
     }
   };
 
@@ -419,37 +586,43 @@ ready(() => {
   filterBtns.modified.addEventListener('click', handleFilterClick);
 
   // Input events
-  textAreaOne.addEventListener('input', (event) => {
-    try {
-      localStorage.setItem('text-area-one', event.target.value);
-    } catch (storageError) {
-      if (storageError.name === 'QuotaExceededError') {
-        console.warn('localStorage quota exceeded. Content will not be persisted across sessions.');
-      } else {
-        console.error('localStorage error:', storageError);
+  const handleInput = (textarea, gutter, warningDiv) => {
+    const tier = getFileTier(getContentByteSize(textarea.value));
+    if (tier === SIZE_TIERS.SMALL) {
+      try {
+        localStorage.setItem(textarea.id, textarea.value);
+        clearStorageWarning(warningDiv);
+      } catch (storageError) {
+        showStorageWarning(
+          warningDiv,
+          storageError.name === 'QuotaExceededError'
+            ? 'Storage quota exceeded. Content will not be persisted across sessions.'
+            : `Storage error: ${storageError.message}`,
+        );
       }
     }
-    updateGutter(textAreaOne, gutterOne);
-    debouncedDiff();
-  });
-
-  textAreaTwo.addEventListener('input', (event) => {
-    try {
-      localStorage.setItem('text-area-two', event.target.value);
-    } catch (storageError) {
-      if (storageError.name === 'QuotaExceededError') {
-        console.warn('localStorage quota exceeded. Content will not be persisted across sessions.');
-      } else {
-        console.error('localStorage error:', storageError);
-      }
+    updateGutter(textarea, gutter);
+    updateSizeTier();
+    if (!requireExplicitDiff) {
+      debouncedDiff();
     }
-    updateGutter(textAreaTwo, gutterTwo);
-    debouncedDiff();
-  });
+  };
 
-  // File uploads (immediate diff)
-  setupFileUpload(fileOne, textAreaOne, gutterOne, runDiff);
-  setupFileUpload(fileTwo, textAreaTwo, gutterTwo, runDiff);
+  textAreaOne.addEventListener('input', () => handleInput(textAreaOne, gutterOne, warningOne));
+  textAreaTwo.addEventListener('input', () => handleInput(textAreaTwo, gutterTwo, warningTwo));
+
+  // File uploads
+  const onFileLoaded = () => {
+    updateSizeTier();
+    if (!requireExplicitDiff) {
+      runDiff();
+    }
+  };
+  setupFileUpload(fileOne, textAreaOne, gutterOne, warningOne, onFileLoaded);
+  setupFileUpload(fileTwo, textAreaTwo, gutterTwo, warningTwo, onFileLoaded);
+
+  // Explicit diff button for large files
+  diffRunBtn.addEventListener('click', runDiff);
 
   // Tab key → insert 2 spaces
   const handleTab = (event) => {

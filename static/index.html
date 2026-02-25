@@ -1,25 +1,58 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <meta name="description" content="Semantic YAML Analysis" />
+    <title>Yamalyze — Online YAML Diff & Compare Tool</title>
+    <meta
+      name="description"
+      content="A free, private YAML diff tool that runs entirely in your browser. Compare YAML files semantically with structural awareness, powered by WebAssembly."
+    />
     <meta name="keywords" content="YAML Semantic Diff, YAML Analysis, YAML Diff, YAML Compare" />
     <meta name="robots" content="index, follow" />
-    <meta name="googlebot" content="index, follow" />
-    <meta name="bingbot" content="index, follow" />
-    <meta name="revisit-after" content="7 days" />
-    <meta name="language" content="English" />
-    <meta name="distribution" content="global" />
     <meta name="author" content="skatiyar" />
     <meta name="theme-color" content="#000000" />
-    <title>Yamalyze</title>
+    <link rel="canonical" href="https://skatiyar.github.io/yamalyze" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Yamalyze — Online YAML Diff & Compare Tool" />
+    <meta
+      property="og:description"
+      content="A free, private YAML diff tool that runs entirely in your browser. Compare YAML files semantically with structural awareness, powered by WebAssembly."
+    />
+    <meta property="og:url" content="https://skatiyar.github.io/yamalyze" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Yamalyze — Online YAML Diff & Compare Tool" />
+    <meta
+      name="twitter:description"
+      content="A free, private YAML diff tool that runs entirely in your browser. Compare YAML files semantically."
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Yamalyze",
+        "url": "https://skatiyar.github.io/yamalyze",
+        "description": "A free, private YAML diff tool that runs entirely in your browser. Compare YAML files semantically with structural awareness, powered by WebAssembly.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires WebAssembly support",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "SKatiyar",
+          "url": "https://skatiyar.info"
+        }
+      }
+    </script>
   </head>
 
   <body class="bg-stone-50 dark:bg-stone-950 text-stone-950 dark:text-stone-50">
     <main class="container mx-auto mt-10 px-4">
-      <div class="flex">
+      <header class="flex">
         <div class="items-left mr-2 mt-2">
           <img
             src="<%=require('./yamlyze.png').default%>"
@@ -33,7 +66,7 @@
             Semantic YAML Analysis - Private & Secure. Runs locally on your browser.
           </p>
         </div>
-      </div>
+      </header>
 
       <div id="app-container" class="mt-10">
         <div class="w-full flex gap-6">
@@ -54,7 +87,11 @@
                 spellcheck="false"
                 wrap="off"
               ></textarea>
-              <div id="yaml-one-error" class="editor-error hidden"></div>
+              <div class="editor-overlays">
+                <div id="size-one-warning" class="editor-size-warning hidden"></div>
+                <div id="yaml-one-warning" class="editor-warning hidden"></div>
+                <div id="yaml-one-error" class="editor-error hidden"></div>
+              </div>
             </div>
           </div>
 
@@ -75,15 +112,20 @@
                 spellcheck="false"
                 wrap="off"
               ></textarea>
-              <div id="yaml-two-error" class="editor-error hidden"></div>
+              <div class="editor-overlays">
+                <div id="size-two-warning" class="editor-size-warning hidden"></div>
+                <div id="yaml-two-warning" class="editor-warning hidden"></div>
+                <div id="yaml-two-error" class="editor-error hidden"></div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Diff results -->
-        <div id="diff-container" class="mt-8 hidden">
+        <div id="diff-container" class="mt-8">
           <div
-            class="flex items-center gap-4 bg-stone-200 dark:bg-stone-800 p-3 rounded-t text-sm font-medium"
+            id="diff-summary"
+            class="flex items-center gap-4 bg-stone-200 dark:bg-stone-800 p-3 rounded-t text-sm font-medium hidden"
           >
             <button id="filter-additions" data-filter="1" class="diff-filter text-green-600">
               <span id="diff-additions">0</span> Additions
@@ -95,7 +137,13 @@
               <span id="diff-modified">0</span> Modified
             </button>
           </div>
-          <div id="diff-tree" class="diff-tree"></div>
+          <button id="diff-run-btn" class="diff-run-btn hidden">Run Diff</button>
+          <div id="diff-placeholder" class="diff-placeholder">Add files to analyze.</div>
+          <div id="diff-loader" class="diff-loader hidden">
+            <div class="diff-loader-spinner"></div>
+            <span id="diff-loader-text">Processing...</span>
+          </div>
+          <div id="diff-tree" class="diff-tree hidden"></div>
         </div>
       </div>
 
@@ -111,28 +159,36 @@
     </main>
 
     <footer
-      class="max-w-1/4 mx-auto px-4 py-6 mt-16 border-t border-stone-300 dark:border-stone-700 flex items-center justify-center gap-4 text-sm text-stone-500 dark:text-stone-400"
+      class="max-w-md mx-auto px-4 py-4 mt-16 border-t border-stone-300 dark:border-stone-700 text-sm text-stone-500 dark:text-stone-400"
     >
-      <a
-        href="https://skatiyar.info"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="hover:text-stone-700 dark:hover:text-stone-200"
-        >SKatiyar</a
+      <div class="flex flex-col items-center justify-center gap-3 mb-3">
+        <span>Private &amp; Secure — runs locally in your browser</span>
+        <span>Handles files up to 7 MB</span>
+      </div>
+      <div
+        class="flex items-center justify-center gap-4 border-t border-stone-300 dark:border-stone-700 pt-4"
       >
-      |
-      <a
-        href="https://github.com/skatiyar/yamalyze"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="hover:text-stone-700 dark:hover:text-stone-200"
-      >
-        <svg class="w-5 h-5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <path
-            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-          />
-        </svg>
-      </a>
+        <a
+          href="https://skatiyar.info"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hover:text-stone-700 dark:hover:text-stone-200"
+          >SKatiyar</a
+        >
+        |
+        <a
+          href="https://github.com/skatiyar/yamalyze"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hover:text-stone-700 dark:hover:text-stone-200"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+            />
+          </svg>
+        </a>
+      </div>
     </footer>
   </body>
 </html>
