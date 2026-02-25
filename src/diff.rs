@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-const MAX_DEPTH: usize = 128;
+const MAX_DEPTH: usize = 256;
 
 /// When two sequences have a product of lengths exceeding this limit,
 /// fall back to positional comparison instead of Myers diff to avoid

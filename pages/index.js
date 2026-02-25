@@ -315,6 +315,11 @@ const renderDiffNode = (node, isRoot = false, filter = null) => {
   }
 
   div.appendChild(renderDiffValue(node));
+  if (isRoot) {
+    div.classList.add('diff-node-root');
+    return div;
+  }
+
   const wrapper = document.createElement('div');
   wrapper.className = 'diff-node';
   wrapper.appendChild(div);
