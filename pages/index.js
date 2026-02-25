@@ -280,7 +280,7 @@ const renderDiffNode = (node, isRoot = false, filter = null) => {
     }
 
     const details = document.createElement('details');
-    details.className = `diff-node${isRoot ? ' diff-node-root' : ''}`;
+    details.className = `diff-node${isRoot ? ' diff-node-root' : ''} overflow-x-hidden`;
 
     if (node.has_diff) {
       details.open = true;
