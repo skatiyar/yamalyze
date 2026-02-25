@@ -8,7 +8,7 @@ Yamalyze is a client-side semantic YAML diff tool. It uses Rust compiled to WebA
 
 ## Build & Development Commands
 
-**Prerequisites:** Rust toolchain with `wasm-pack`, Node.js 18+
+**Prerequisites:** Rust toolchain with `wasm-pack`, Node.js 24+
 
 ```bash
 npm install          # Install JS dependencies
@@ -47,11 +47,12 @@ npm run format:fix    # Prettier --write only
   - `DiffValue` — holds `left_value` and `right_value` as `JsValue`
   - Core functions: `map_diff()` (objects), `seq_diff()` (arrays via Myers diff), `val_diff()` (scalars), `yaml_diff()` (dispatcher)
   - `DiffValue::new()` and `YamlDiff::new()` — `pub(crate)` constructors for use in `lib.rs`
-  - Helper functions: `to_js()` (safe serialization, `pub(crate)`), `yaml_key_to_string()` (non-string key support, `pub(crate)`), `serialize_value()` (canonical string for Myers comparison), `diff_node_to_js()`/`diff_vec_to_js()` (plain JS object serialization, `pub(crate)`)
+  - Helper functions: `to_js()` (safe serialization, `pub(crate)`), `yaml_key_to_string()` (non-string key support, `pub(crate)`), `serialize_value()` (canonical string for Myers comparison), `value_to_diff_children()` (recursive child tree generation for pure additions/deletions — complex values become expandable instead of flat `{}`/`[...]`), `diff_node_to_js()`/`diff_vec_to_js()` (plain JS object serialization, `pub(crate)`)
   - All diff functions take references, a `depth` parameter, and return `Result` — no `.unwrap()` panics
   - Array diffing uses the `similar` crate (Myers' O(ND) algorithm) for content-based matching instead of the old O(n\*m) LCS DP table. A size guard (`SEQ_DIFF_PRODUCT_LIMIT = 10_000_000`) falls back to `positional_seq_diff()` for extremely large sequences to avoid pathological performance.
   - Recursion depth is capped at `MAX_DEPTH = 128` levels to prevent WASM stack overflow on deeply nested YAML
   - `has_diff` propagates from children — a container node is `Modified` only if at least one child has a diff
+  - Additions and deletions of complex values (mappings/sequences) produce full recursive child trees via `value_to_diff_children()`, rendering as collapsible nodes instead of flat `{}`/`[...]`
 
 ### JavaScript Frontend (`pages/`)
 
@@ -68,7 +69,7 @@ npm run format:fix    # Prettier --write only
   - Tab key inserts 2 spaces (YAML-friendly)
   - Storage warning overlay — localStorage quota exceeded errors shown as an amber overlay at the bottom of the affected editor panel (not just console-logged). Warning clears on next successful save.
   - localStorage persistence of inputs (Small tier only), WebAssembly feature detection
-- **`style.css`** — Tailwind CSS v4 with custom classes for editor gutter (`.editor-gutter`, `.gutter-line--error`), stacked overlay container (`.editor-overlays` — absolute bottom, flex column), error overlay (`.editor-error` — red), storage warning overlay (`.editor-warning` — amber), per-panel size warning overlay (`.editor-size-warning` — translucent amber), diff run button (`.diff-run-btn`), diff loader (`.diff-loader`, `.diff-loader-spinner` — CSS border-spin animation with dark mode), diff tree (`.diff-row--addition`, `.diff-row--deletion`, `.diff-row--modified`, `.diff-node > .diff-row` alignment), diff filter buttons (`.diff-filter`, `.diff-filter--active`), collapsible details/summary, and file upload button.
+- **`style.css`** — Tailwind CSS v4 with custom classes for editor gutter (`.editor-gutter`, `.gutter-line--error`), stacked overlay container (`.editor-overlays` — absolute bottom, flex column), error overlay (`.editor-error` — red), storage warning overlay (`.editor-warning` — amber), per-panel size warning overlay (`.editor-size-warning` — translucent amber), diff run button (`.diff-run-btn`), diff loader (`.diff-loader`, `.diff-loader-spinner` — CSS border-spin animation with dark mode), diff tree (`.diff-row--addition`, `.diff-row--deletion`, `.diff-row--modified`, leaf row alignment via invisible `::before` arrow placeholder on `.diff-node > .diff-row` and `.diff-row.diff-node-root`), diff filter buttons (`.diff-filter`, `.diff-filter--active`), collapsible details/summary, and file upload button.
 
 ### Build Pipeline
 

@@ -13,6 +13,7 @@ A client-side semantic YAML diff tool. Rust compiled to WebAssembly powers the d
 - File upload — load `.yaml`/`.yml` files from disk into either editor panel with size validation
 - Line numbers with error highlighting — gutter synced to textarea scroll, error lines highlighted red
 - Inline scalar display — scalar key-value pairs shown inline next to their key, only nested objects/arrays are collapsible
+- Expandable additions/deletions — added or removed keys with nested structure are shown as collapsible trees, not flat `{}` / `[...]`
 - Collapsible diff output — unchanged keys collapsed by default, additions (green), deletions (red), modified (amber) expanded
 - Clickable diff filters — click Additions, Deletions, or Modified in the summary bar to filter the tree to only that type; click again to show all
 - Chunked diffing — mappings are diffed per top-level key with UI yields between chunks, keeping the browser responsive
@@ -24,7 +25,7 @@ A client-side semantic YAML diff tool. Rust compiled to WebAssembly powers the d
 ## Prerequisites
 
 - Rust toolchain with `wasm-pack`
-- Node.js 18+
+- Node.js 24+
 
 ## Getting Started
 
@@ -53,7 +54,7 @@ npm run lint:fix      # Auto-fix all (ESLint + Prettier + cargo fmt)
 ### Rust/WASM Core (`src/`)
 
 - `lib.rs` — WASM entry point. Exports a chunked diff API (`diff_init`, `diff_key`, `diff_stored`, `diff_cleanup`) for large files.
-- `diff.rs` — Recursive diff engine. Compares mappings key-by-key, sequences via Myers diff algorithm (`similar` crate), and scalars by value equality. Diff results are serialized to plain JS objects in Rust to minimize WASM boundary overhead.
+- `diff.rs` — Recursive diff engine. Compares mappings key-by-key, sequences via Myers diff algorithm (`similar` crate), and scalars by value equality. Additions/deletions of complex values produce full recursive child trees for expandable rendering. Diff results are serialized to plain JS objects in Rust to minimize WASM boundary overhead.
 
 ### JavaScript Frontend (`pages/`)
 
