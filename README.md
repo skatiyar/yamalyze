@@ -7,7 +7,7 @@ A client-side semantic YAML diff tool. Rust compiled to WebAssembly powers the d
 - Semantic YAML comparison — understands YAML structure (mappings, sequences, scalars) rather than comparing text lines
 - Diff types: `Unchanged`, `Additions`, `Deletions`, `Modified`
 - Myers-based array diffing — insertions and removals mid-sequence are detected using the Myers O(ND) diff algorithm (`similar` crate), replacing the old O(n\*m) LCS approach. Falls back to positional comparison for extremely large sequences.
-- Recursive diff tree — nested objects and arrays produce a hierarchical diff with `has_diff` propagated from children. Recursion capped at 128 levels to prevent stack overflow.
+- Recursive diff tree — nested objects and arrays produce a hierarchical diff with `has_diff` propagated from children. Recursion capped at 256 levels to prevent stack overflow.
 - Large file support (up to 100MB) — tiered behavior: auto-diff for files under 10MB, explicit "Run Diff" button for larger files, read-only mode for 50MB+, rejection above 100MB
 - Auto-diff with debounce — comparison runs automatically as you type (400ms debounce) for small/medium files
 - File upload — load `.yaml`/`.yml` files from disk into either editor panel with size validation
@@ -68,6 +68,18 @@ Webpack with `@wasm-tool/wasm-pack-plugin` compiles Rust to WASM during the buil
 ## Deployment
 
 GitHub Actions runs lint and build on push to `main` and on PRs. Deploy to GitHub Pages happens on push to `main` after both jobs pass.
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding guidelines, and how to submit a pull request.
+
+## Roadmap
+
+Planned improvements for future releases:
+
+- **Input/Output Architecture** — Replace textareas with CodeMirror 6 (virtual scrolling for large files, YAML syntax highlighting), add virtual scrolling for the diff tree, and switch from localStorage to IndexedDB for persistence
+- **Smarter Diffing** — Move WASM diff to a Web Worker for non-blocking UI, support deeper chunking beyond top-level keys, and add lazy parsing to reduce peak memory usage
+- **Polish** — Progress bar with cancel button during diff, memory monitoring with warnings, and diff export as JSON for files too large to render
 
 ## License
 

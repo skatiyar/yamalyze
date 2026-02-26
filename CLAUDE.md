@@ -50,7 +50,7 @@ npm run format:fix    # Prettier --write only
   - Helper functions: `to_js()` (safe serialization, `pub(crate)`), `yaml_key_to_string()` (non-string key support, `pub(crate)`), `serialize_value()` (canonical string for Myers comparison), `value_to_diff_children()` (recursive child tree generation for pure additions/deletions — complex values become expandable instead of flat `{}`/`[...]`), `diff_node_to_js()`/`diff_vec_to_js()` (plain JS object serialization, `pub(crate)`)
   - All diff functions take references, a `depth` parameter, and return `Result` — no `.unwrap()` panics
   - Array diffing uses the `similar` crate (Myers' O(ND) algorithm) for content-based matching instead of the old O(n\*m) LCS DP table. A size guard (`SEQ_DIFF_PRODUCT_LIMIT = 10_000_000`) falls back to `positional_seq_diff()` for extremely large sequences to avoid pathological performance.
-  - Recursion depth is capped at `MAX_DEPTH = 128` levels to prevent WASM stack overflow on deeply nested YAML
+  - Recursion depth is capped at `MAX_DEPTH = 256` levels to prevent WASM stack overflow on deeply nested YAML
   - `has_diff` propagates from children — a container node is `Modified` only if at least one child has a diff
   - Additions and deletions of complex values (mappings/sequences) produce full recursive child trees via `value_to_diff_children()`, rendering as collapsible nodes instead of flat `{}`/`[...]`
 
