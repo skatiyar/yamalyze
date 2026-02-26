@@ -500,7 +500,7 @@ pub fn yaml_diff(
 ) -> Result<Vec<YamlDiff>, JsValue> {
     if depth > MAX_DEPTH {
         return Err(JsValue::from_str(
-            "Maximum nesting depth exceeded (128 levels)",
+            "Maximum nesting depth exceeded (256 levels)",
         ));
     }
 
