@@ -69,6 +69,10 @@ Webpack with `@wasm-tool/wasm-pack-plugin` compiles Rust to WASM during the buil
 
 GitHub Actions runs lint and build on push to `main` and on PRs. Deploy to GitHub Pages happens on push to `main` after both jobs pass.
 
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding guidelines, and how to submit a pull request.
+
 ## Roadmap
 
 Planned improvements for future releases:
