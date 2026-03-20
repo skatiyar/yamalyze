@@ -1,0 +1,6 @@
+---
+source: src/lib.rs
+expression: wrapped
+---
+__root__:
+  a: 1

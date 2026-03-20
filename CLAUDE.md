@@ -16,7 +16,11 @@ npm run serve        # Start webpack dev server (compiles Rust to WASM automatic
 npm run build        # Production build → _site/ directory
 ```
 
-There is no test suite configured.
+```bash
+cargo test           # Run Rust unit tests (requires native target, not WASM)
+```
+
+Tests use the `insta` crate for snapshot assertions. Snapshots live in `src/snapshots/`.
 
 ## Linting & Formatting
 

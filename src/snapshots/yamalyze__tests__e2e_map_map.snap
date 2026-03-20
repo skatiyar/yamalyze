@@ -1,0 +1,32 @@
+---
+source: src/lib.rs
+expression: diffs
+---
+- key: a
+  diff:
+    left_value: 1
+    right_value: 1
+  has_diff: false
+  diff_type: Unchanged
+  children:
+    - key: ~
+      diff:
+        left_value: 1
+        right_value: 1
+      has_diff: false
+      diff_type: Unchanged
+      children: []
+- key: b
+  diff:
+    left_value: old
+    right_value: new
+  has_diff: true
+  diff_type: Modified
+  children:
+    - key: ~
+      diff:
+        left_value: old
+        right_value: new
+      has_diff: true
+      diff_type: Modified
+      children: []

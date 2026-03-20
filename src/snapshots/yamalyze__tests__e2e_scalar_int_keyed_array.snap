@@ -1,0 +1,16 @@
+---
+source: src/lib.rs
+assertion_line: 146
+expression: diffs
+---
+- key: ~
+  diff:
+    left_value: 1
+    right_value:
+      hi:
+        - a
+        - b
+        - c
+  has_diff: true
+  diff_type: Modified
+  children: []
