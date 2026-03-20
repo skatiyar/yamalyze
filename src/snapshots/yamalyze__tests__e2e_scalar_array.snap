@@ -1,0 +1,13 @@
+---
+source: src/lib.rs
+expression: diffs
+---
+- key: ~
+  diff:
+    left_value: hello
+    right_value:
+      - a
+      - b
+  has_diff: true
+  diff_type: Modified
+  children: []

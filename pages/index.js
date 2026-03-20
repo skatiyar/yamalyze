@@ -1,7 +1,7 @@
 // CSS Assets
 import './style.css';
 
-import { diff_init, diff_key, diff_stored, diff_cleanup } from '../pkg';
+import { compute_diff } from '../pkg';
 
 // ── Utilities ────────────────────────────────────────
 
@@ -516,27 +516,11 @@ ready(() => {
     }
 
     hidePlaceholder();
-    showLoader('Parsing YAML...');
+    showLoader('Computing diff...');
     await yieldToUI();
 
     try {
-      const keys = diff_init(v1, v2);
-
-      let diffData;
-      if (keys.length > 0) {
-        diffData = [];
-        for (let i = 0; i < keys.length; i++) {
-          showLoader(`Computing diff (${i + 1}/${keys.length})...`);
-          await yieldToUI();
-          diffData.push(diff_key(keys[i]));
-        }
-      } else {
-        showLoader('Computing diff...');
-        await yieldToUI();
-        diffData = diff_stored();
-      }
-
-      diff_cleanup();
+      const diffData = compute_diff(v1, v2);
 
       showLoader('Rendering...');
       await yieldToUI();
@@ -547,7 +531,6 @@ ready(() => {
       renderDiffTree(diffData, summaryEls);
       hideLoader();
     } catch (e) {
-      diff_cleanup();
       hideLoader();
       showPlaceholder();
       if (e.message.includes('[YAML ONE]')) {

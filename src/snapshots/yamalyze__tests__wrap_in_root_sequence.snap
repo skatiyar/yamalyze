@@ -1,0 +1,7 @@
+---
+source: src/lib.rs
+expression: "serde_yml::to_string(&wrapped).unwrap()"
+---
+__root__:
+- a
+- b

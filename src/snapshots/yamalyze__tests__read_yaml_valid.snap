@@ -1,0 +1,6 @@
+---
+source: src/lib.rs
+expression: result
+---
+a: 1
+b: 2

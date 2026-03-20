@@ -8,6 +8,7 @@ const MAX_DEPTH: usize = 256;
 const SEQ_DIFF_PRODUCT_LIMIT: usize = 10_000_000;
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub(crate) enum DiffType {
     Unchanged,
     Additions,
@@ -16,13 +17,14 @@ pub(crate) enum DiffType {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub(crate) struct DiffValue {
-    pub(crate) left_value: JsValue,
-    pub(crate) right_value: JsValue,
+    pub(crate) left_value: serde_yml::Value,
+    pub(crate) right_value: serde_yml::Value,
 }
 
 impl DiffValue {
-    pub(crate) fn new(left_value: JsValue, right_value: JsValue) -> Self {
+    pub(crate) fn new(left_value: serde_yml::Value, right_value: serde_yml::Value) -> Self {
         Self {
             left_value,
             right_value,
@@ -31,6 +33,7 @@ impl DiffValue {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub(crate) struct YamlDiff {
     pub(crate) key: Option<String>,
     pub(crate) diff: DiffValue,
@@ -82,16 +85,10 @@ pub(crate) fn diff_node_to_js(node: &YamlDiff) -> Result<JsValue, JsValue> {
     js_sys::Reflect::set(&obj, &JsValue::from_str("diff_type"), &JsValue::from(dt))?;
 
     let diff_obj = js_sys::Object::new();
-    js_sys::Reflect::set(
-        &diff_obj,
-        &JsValue::from_str("left_value"),
-        &node.diff.left_value,
-    )?;
-    js_sys::Reflect::set(
-        &diff_obj,
-        &JsValue::from_str("right_value"),
-        &node.diff.right_value,
-    )?;
+    let lv = to_js(&node.diff.left_value)?;
+    let rv = to_js(&node.diff.right_value)?;
+    js_sys::Reflect::set(&diff_obj, &JsValue::from_str("left_value"), &lv)?;
+    js_sys::Reflect::set(&diff_obj, &JsValue::from_str("right_value"), &rv)?;
     js_sys::Reflect::set(&obj, &JsValue::from_str("diff"), &diff_obj)?;
 
     let children_arr = js_sys::Array::new();
@@ -112,13 +109,25 @@ pub(crate) fn diff_vec_to_js(diffs: &[YamlDiff]) -> Result<JsValue, JsValue> {
     Ok(arr.into())
 }
 
+/// Strip `Value::Tagged` wrappers so the inner value is used for
+/// comparison, serialization, and type dispatch. serde_yml may parse
+/// certain scalars (e.g. version strings like `3.0.1`) as Tagged,
+/// and `TaggedValue::serialize` emits a mapping `{tag: value}` which
+/// confuses both the diff logic and JS rendering.
+pub(crate) fn unwrap_tagged(value: &serde_yml::Value) -> &serde_yml::Value {
+    match value {
+        serde_yml::Value::Tagged(tagged) => unwrap_tagged(&tagged.value),
+        other => other,
+    }
+}
+
 pub(crate) fn to_js(value: &serde_yml::Value) -> Result<JsValue, JsValue> {
-    serde_wasm_bindgen::to_value(value)
+    serde_wasm_bindgen::to_value(unwrap_tagged(value))
         .map_err(|e| JsValue::from_str(&format!("Serialization error: {e}")))
 }
 
 pub(crate) fn yaml_key_to_string(key: &serde_yml::Value) -> String {
-    match key {
+    match unwrap_tagged(key) {
         serde_yml::Value::String(s) => s.clone(),
         serde_yml::Value::Number(n) => n.to_string(),
         serde_yml::Value::Bool(b) => b.to_string(),
@@ -130,6 +139,7 @@ pub(crate) fn yaml_key_to_string(key: &serde_yml::Value) -> String {
 /// Serialize a YAML value to a canonical string for use as a comparison key
 /// in the Myers diff algorithm.
 fn serialize_value(v: &serde_yml::Value) -> String {
+    let v = unwrap_tagged(v);
     serde_yml::to_string(v).unwrap_or_else(|_| format!("{v:?}"))
 }
 
@@ -140,47 +150,49 @@ fn value_to_diff_children(
     value: &serde_yml::Value,
     diff_type: &DiffType,
     depth: usize,
-) -> Result<Vec<YamlDiff>, JsValue> {
+) -> Vec<YamlDiff> {
     if depth > MAX_DEPTH {
-        return Ok(Vec::new());
+        return Vec::new();
     }
-    let make_diff = |v: &serde_yml::Value| -> Result<DiffValue, JsValue> {
+    let make_diff = |v: &serde_yml::Value| -> DiffValue {
+        let v = unwrap_tagged(v).clone();
         match diff_type {
-            DiffType::Deletions => Ok(DiffValue::new(to_js(v)?, JsValue::NULL)),
-            DiffType::Additions => Ok(DiffValue::new(JsValue::NULL, to_js(v)?)),
+            DiffType::Deletions => DiffValue::new(v, serde_yml::Value::Null),
+            DiffType::Additions => DiffValue::new(serde_yml::Value::Null, v),
             _ => unreachable!(),
         }
     };
+    let value = unwrap_tagged(value);
     match value {
         serde_yml::Value::Mapping(map) => {
             let mut children = Vec::new();
             for (key, val) in map.iter() {
-                let sub = value_to_diff_children(val, diff_type, depth + 1)?;
+                let sub = value_to_diff_children(val, diff_type, depth + 1);
                 children.push(YamlDiff::new(
                     Some(yaml_key_to_string(key)),
-                    make_diff(val)?,
+                    make_diff(val),
                     diff_type.clone(),
                     true,
                     sub,
                 ));
             }
-            Ok(children)
+            children
         }
         serde_yml::Value::Sequence(seq) => {
             let mut children = Vec::new();
             for (i, val) in seq.iter().enumerate() {
-                let sub = value_to_diff_children(val, diff_type, depth + 1)?;
+                let sub = value_to_diff_children(val, diff_type, depth + 1);
                 children.push(YamlDiff::new(
                     Some(i.to_string()),
-                    make_diff(val)?,
+                    make_diff(val),
                     diff_type.clone(),
                     true,
                     sub,
                 ));
             }
-            Ok(children)
+            children
         }
-        _ => Ok(Vec::new()),
+        _ => Vec::new(),
     }
 }
 
@@ -200,8 +212,8 @@ fn map_diff(
                 diffs.push(YamlDiff {
                     key: Some(key_str),
                     diff: DiffValue {
-                        left_value: to_js(value_one)?,
-                        right_value: to_js(value_two)?,
+                        left_value: unwrap_tagged(value_one).clone(),
+                        right_value: unwrap_tagged(value_two).clone(),
                     },
                     diff_type: if any_child_has_diff {
                         DiffType::Modified
@@ -216,12 +228,12 @@ fn map_diff(
                 diffs.push(YamlDiff {
                     key: Some(key_str),
                     diff: DiffValue {
-                        left_value: to_js(value_one)?,
-                        right_value: JsValue::NULL,
+                        left_value: unwrap_tagged(value_one).clone(),
+                        right_value: serde_yml::Value::Null,
                     },
                     diff_type: DiffType::Deletions,
                     has_diff: true,
-                    children: value_to_diff_children(value_one, &DiffType::Deletions, depth + 1)?,
+                    children: value_to_diff_children(value_one, &DiffType::Deletions, depth + 1),
                 });
             }
         }
@@ -232,12 +244,12 @@ fn map_diff(
             diffs.push(YamlDiff {
                 key: Some(yaml_key_to_string(key)),
                 diff: DiffValue {
-                    left_value: JsValue::NULL,
-                    right_value: to_js(value_two)?,
+                    left_value: serde_yml::Value::Null,
+                    right_value: unwrap_tagged(value_two).clone(),
                 },
                 diff_type: DiffType::Additions,
                 has_diff: true,
-                children: value_to_diff_children(value_two, &DiffType::Additions, depth + 1)?,
+                children: value_to_diff_children(value_two, &DiffType::Additions, depth + 1),
             });
         }
     }
@@ -263,8 +275,8 @@ fn positional_seq_diff(
                 diffs.push(YamlDiff {
                     key: Some(i.to_string()),
                     diff: DiffValue {
-                        left_value: to_js(lv)?,
-                        right_value: to_js(rv)?,
+                        left_value: unwrap_tagged(lv).clone(),
+                        right_value: unwrap_tagged(rv).clone(),
                     },
                     diff_type: if any_child_has_diff {
                         DiffType::Modified
@@ -279,24 +291,24 @@ fn positional_seq_diff(
                 diffs.push(YamlDiff {
                     key: Some(i.to_string()),
                     diff: DiffValue {
-                        left_value: to_js(lv)?,
-                        right_value: JsValue::NULL,
+                        left_value: unwrap_tagged(lv).clone(),
+                        right_value: serde_yml::Value::Null,
                     },
                     diff_type: DiffType::Deletions,
                     has_diff: true,
-                    children: value_to_diff_children(lv, &DiffType::Deletions, depth + 1)?,
+                    children: value_to_diff_children(lv, &DiffType::Deletions, depth + 1),
                 });
             }
             (None, Some(rv)) => {
                 diffs.push(YamlDiff {
                     key: Some(i.to_string()),
                     diff: DiffValue {
-                        left_value: JsValue::NULL,
-                        right_value: to_js(rv)?,
+                        left_value: serde_yml::Value::Null,
+                        right_value: unwrap_tagged(rv).clone(),
                     },
                     diff_type: DiffType::Additions,
                     has_diff: true,
-                    children: value_to_diff_children(rv, &DiffType::Additions, depth + 1)?,
+                    children: value_to_diff_children(rv, &DiffType::Additions, depth + 1),
                 });
             }
             (None, None) => unreachable!(),
@@ -338,8 +350,8 @@ fn seq_diff(
                     diffs.push(YamlDiff {
                         key: Some(pos.to_string()),
                         diff: DiffValue {
-                            left_value: to_js(&left[li])?,
-                            right_value: to_js(&right[ri])?,
+                            left_value: unwrap_tagged(&left[li]).clone(),
+                            right_value: unwrap_tagged(&right[ri]).clone(),
                         },
                         diff_type: if any_child_has_diff {
                             DiffType::Modified
@@ -360,8 +372,8 @@ fn seq_diff(
                     diffs.push(YamlDiff {
                         key: Some(pos.to_string()),
                         diff: DiffValue {
-                            left_value: to_js(&left[li])?,
-                            right_value: JsValue::NULL,
+                            left_value: unwrap_tagged(&left[li]).clone(),
+                            right_value: serde_yml::Value::Null,
                         },
                         diff_type: DiffType::Deletions,
                         has_diff: true,
@@ -369,7 +381,7 @@ fn seq_diff(
                             &left[li],
                             &DiffType::Deletions,
                             depth + 1,
-                        )?,
+                        ),
                     });
                     pos += 1;
                 }
@@ -382,8 +394,8 @@ fn seq_diff(
                     diffs.push(YamlDiff {
                         key: Some(pos.to_string()),
                         diff: DiffValue {
-                            left_value: JsValue::NULL,
-                            right_value: to_js(&right[ri])?,
+                            left_value: serde_yml::Value::Null,
+                            right_value: unwrap_tagged(&right[ri]).clone(),
                         },
                         diff_type: DiffType::Additions,
                         has_diff: true,
@@ -391,7 +403,7 @@ fn seq_diff(
                             &right[ri],
                             &DiffType::Additions,
                             depth + 1,
-                        )?,
+                        ),
                     });
                     pos += 1;
                 }
@@ -413,8 +425,8 @@ fn seq_diff(
                     diffs.push(YamlDiff {
                         key: Some(pos.to_string()),
                         diff: DiffValue {
-                            left_value: to_js(&left[li])?,
-                            right_value: to_js(&right[ri])?,
+                            left_value: unwrap_tagged(&left[li]).clone(),
+                            right_value: unwrap_tagged(&right[ri]).clone(),
                         },
                         diff_type: if any_child_has_diff {
                             DiffType::Modified
@@ -431,8 +443,8 @@ fn seq_diff(
                     diffs.push(YamlDiff {
                         key: Some(pos.to_string()),
                         diff: DiffValue {
-                            left_value: to_js(&left[li])?,
-                            right_value: JsValue::NULL,
+                            left_value: unwrap_tagged(&left[li]).clone(),
+                            right_value: serde_yml::Value::Null,
                         },
                         diff_type: DiffType::Deletions,
                         has_diff: true,
@@ -440,7 +452,7 @@ fn seq_diff(
                             &left[li],
                             &DiffType::Deletions,
                             depth + 1,
-                        )?,
+                        ),
                     });
                     pos += 1;
                 }
@@ -449,8 +461,8 @@ fn seq_diff(
                     diffs.push(YamlDiff {
                         key: Some(pos.to_string()),
                         diff: DiffValue {
-                            left_value: JsValue::NULL,
-                            right_value: to_js(&right[ri])?,
+                            left_value: serde_yml::Value::Null,
+                            right_value: unwrap_tagged(&right[ri]).clone(),
                         },
                         diff_type: DiffType::Additions,
                         has_diff: true,
@@ -458,7 +470,7 @@ fn seq_diff(
                             &right[ri],
                             &DiffType::Additions,
                             depth + 1,
-                        )?,
+                        ),
                     });
                     pos += 1;
                 }
@@ -469,7 +481,7 @@ fn seq_diff(
     Ok(diffs)
 }
 
-fn val_diff(left: &serde_yml::Value, right: &serde_yml::Value) -> Result<Vec<YamlDiff>, JsValue> {
+fn val_diff(left: &serde_yml::Value, right: &serde_yml::Value) -> Vec<YamlDiff> {
     let has_diff = left != right;
     let diff_type = if !has_diff {
         DiffType::Unchanged
@@ -481,16 +493,16 @@ fn val_diff(left: &serde_yml::Value, right: &serde_yml::Value) -> Result<Vec<Yam
         }
     };
 
-    Ok(vec![YamlDiff {
+    vec![YamlDiff {
         key: None,
         diff: DiffValue {
-            left_value: to_js(left)?,
-            right_value: to_js(right)?,
+            left_value: left.clone(),
+            right_value: right.clone(),
         },
         has_diff,
         diff_type,
         children: Vec::new(),
-    }])
+    }]
 }
 
 pub fn yaml_diff(
@@ -504,6 +516,9 @@ pub fn yaml_diff(
         ));
     }
 
+    let left = unwrap_tagged(left);
+    let right = unwrap_tagged(right);
+
     match (left, right) {
         (serde_yml::Value::Mapping(map_one), serde_yml::Value::Mapping(map_two)) => {
             map_diff(map_one, map_two, depth)
@@ -511,6 +526,32 @@ pub fn yaml_diff(
         (serde_yml::Value::Sequence(seq_one), serde_yml::Value::Sequence(seq_two)) => {
             seq_diff(seq_one, seq_two, depth)
         }
-        (one, two) => val_diff(one, two),
+        (one, two) => Ok(val_diff(one, two)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unwrap_tagged_strips_tag() {
+        // serde_yml parses version-like strings (e.g. 3.0.1) as Tagged
+        let value: serde_yml::Value = serde_yml::from_str("3.0.1").unwrap();
+        let unwrapped = unwrap_tagged(&value);
+        assert!(
+            matches!(unwrapped, serde_yml::Value::String(s) if s == "3.0.1"),
+            "expected String(\"3.0.1\"), got {unwrapped:?}",
+        );
+    }
+
+    #[test]
+    fn unwrap_tagged_passthrough() {
+        let value: serde_yml::Value = serde_yml::from_str("hello").unwrap();
+        let unwrapped = unwrap_tagged(&value);
+        assert!(
+            matches!(unwrapped, serde_yml::Value::String(s) if s == "hello"),
+            "expected String(\"hello\"), got {unwrapped:?}",
+        );
     }
 }
