@@ -16,8 +16,7 @@ A client-side semantic YAML diff tool. Rust compiled to WebAssembly powers the d
 - Expandable additions/deletions — added or removed keys with nested structure are shown as collapsible trees, not flat `{}` / `[...]`
 - Collapsible diff output — unchanged keys collapsed by default, additions (green), deletions (red), modified (amber) expanded
 - Clickable diff filters — click Additions, Deletions, or Modified in the summary bar to filter the tree to only that type; click again to show all
-- Chunked diffing — mappings are diffed per top-level key with UI yields between chunks, keeping the browser responsive
-- Progress loader — spinner with stage text ("Parsing YAML...", "Computing diff (i/N)...", "Rendering...") shown during processing
+- Progress loader — spinner with stage text ("Computing diff...", "Rendering...") shown during processing
 - Storage quota warning — amber overlay on the affected editor when localStorage is full, instead of silent failure
 - Simultaneous error reporting — both YAML parse errors shown at once if both inputs are invalid
 - Runs entirely in the browser via WebAssembly
@@ -53,12 +52,12 @@ npm run lint:fix      # Auto-fix all (ESLint + Prettier + cargo fmt)
 
 ### Rust/WASM Core (`src/`)
 
-- `lib.rs` — WASM entry point. Exports a chunked diff API (`diff_init`, `diff_key`, `diff_stored`, `diff_cleanup`) for large files.
-- `diff.rs` — Recursive diff engine. Compares mappings key-by-key, sequences via Myers diff algorithm (`similar` crate), and scalars by value equality. Additions/deletions of complex values produce full recursive child trees for expandable rendering. Diff results are serialized to plain JS objects in Rust to minimize WASM boundary overhead.
+- `lib.rs` — WASM entry point. Exports `compute_diff(yone, ytwo)` — parses both inputs, computes the full diff tree, and returns a JS array.
+- `diff.rs` — Recursive diff engine. Compares mappings key-by-key, sequences via Myers diff algorithm (`similar` crate), and scalars by value equality. Strips `Value::Tagged` wrappers for version-like strings. Additions/deletions of complex values produce full recursive child trees for expandable rendering. Diff results are serialized to plain JS objects in Rust to minimize WASM boundary overhead.
 
 ### JavaScript Frontend (`pages/`)
 
-- `index.js` — Async chunked diff with progress loader, debounced auto-diff (small files) or explicit "Run Diff" button (large files), file upload with size tiers, line number gutter with error highlighting, recursive diff tree rendering with collapsible nodes, clickable diff type filters, localStorage persistence (small files only).
+- `index.js` — Async diff via single `compute_diff` WASM call with progress loader, debounced auto-diff (small files) or explicit "Run Diff" button (large files), file upload with size tiers, line number gutter with error highlighting, recursive diff tree rendering with collapsible nodes, clickable diff type filters, localStorage persistence (small files only).
 - `style.css` — Tailwind CSS v4 with custom classes for editor gutter, diff tree color coding, and collapsible details/summary.
 
 ### Build Pipeline
@@ -78,7 +77,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup inst
 Planned improvements for future releases:
 
 - **Input/Output Architecture** — Replace textareas with CodeMirror 6 (virtual scrolling for large files, YAML syntax highlighting), add virtual scrolling for the diff tree, and switch from localStorage to IndexedDB for persistence
-- **Smarter Diffing** — Move WASM diff to a Web Worker for non-blocking UI, support deeper chunking beyond top-level keys, and add lazy parsing to reduce peak memory usage
+- **Smarter Diffing** — Move WASM diff to a Web Worker for non-blocking UI, add chunked per-key diffing for large mappings, and add lazy parsing to reduce peak memory usage
 - **Polish** — Progress bar with cancel button during diff, memory monitoring with warnings, and diff export as JSON for files too large to render
 
 ## License
